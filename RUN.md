@@ -1,4 +1,4 @@
-# اجرای پل‌بین
+# اجرای پول‌بین
 
 راهنمای بالا آوردن اپ روی شبیه‌ساز و گوشی واقعی. همه‌ی دستورها برای **PowerShell** نوشته شده‌اند.
 
@@ -89,7 +89,7 @@ Set-Location "D:\personal projects\polbin\android"; $env:ANDROID_HOME = "E:\andr
 & "E:\android_studio\Android\Sdk\platform-tools\adb.exe" shell am start -n com.polbin/.MainActivity
 ```
 
-یا در خود شبیه‌ساز آیکون **پل‌بین** را بزن.
+یا در خود شبیه‌ساز آیکون **پول‌بین** را بزن.
 
 ### قدم ۶: بار اول، اپ را یک‌بار ببند و باز کن
 

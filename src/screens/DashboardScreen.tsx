@@ -24,13 +24,14 @@ import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
 import { formatToman, toFaDigits } from '../utils/format';
-import { jalaliMonthLabel } from '../utils/jalali';
+import { jalaliLongDate } from '../utils/jalali';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
 const PERIODS = [
-  { days: 7, label: '۷ روز' },
-  { days: 30, label: '۳۰ روز' },
+  { days: 1, label: 'امروز', summary: 'امروز' },
+  { days: 7, label: '۷ روز', summary: 'در ۷ روز گذشته' },
+  { days: 30, label: '۳۰ روز', summary: 'در ۳۰ روز گذشته' },
 ] as const;
 
 export function DashboardScreen({ navigation }: Props) {
@@ -38,6 +39,8 @@ export function DashboardScreen({ navigation }: Props) {
   const { transactions, loading, error, lastAddedId, reload, takeNextFakeSms } = useTransactions();
   const { categories } = useCategories();
   const [periodDays, setPeriodDays] = useState<number>(30);
+  const activePeriod =
+    PERIODS.find(item => item.days === periodDays) ?? PERIODS[PERIODS.length - 1];
 
   const periodTransactions = useMemo(
     () => withinLastDays(transactions, periodDays),
@@ -93,18 +96,11 @@ export function DashboardScreen({ navigation }: Props) {
         <View style={styles.topBar}>
           <View>
             <Text style={styles.greeting}>سلام {user?.displayName ?? ''}</Text>
-            <Text style={styles.monthLabel}>{toFaDigits(jalaliMonthLabel(new Date()))}</Text>
+            <Text style={styles.monthLabel}>{toFaDigits(jalaliLongDate(new Date()))}</Text>
           </View>
-          <View style={styles.topActions}>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Categories')}
-              style={styles.signOut}>
-              <Text style={styles.signOutText}>دسته‌بندی‌ها</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={signOut} style={styles.signOut}>
-              <Text style={styles.signOutText}>خروج</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={signOut} style={styles.signOut}>
+            <Text style={styles.signOutText}>خروج</Text>
+          </TouchableOpacity>
         </View>
 
         <Card style={styles.summaryCard}>
@@ -127,7 +123,7 @@ export function DashboardScreen({ navigation }: Props) {
           <Text style={styles.summaryLabel}>مجموع خرج</Text>
           <Text style={styles.summaryAmount}>{formatToman(total)}</Text>
           <Text style={styles.summaryMeta}>
-            {toFaDigits(periodTransactions.length)} تراکنش در {toFaDigits(periodDays)} روز گذشته
+            {toFaDigits(periodTransactions.length)} تراکنش {activePeriod.summary}
           </Text>
 
           <View style={styles.proportionWrap}>
@@ -152,7 +148,12 @@ export function DashboardScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>خرج به تفکیک دسته</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>خرج به تفکیک دسته</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
+              <Text style={styles.sectionAction}>مدیریت دسته‌بندی‌ها</Text>
+            </TouchableOpacity>
+          </View>
           <Card>
             {breakdown.length > 0 ? (
               <CategoryBars data={breakdown} />
@@ -212,7 +213,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceAlt,
   },
-  topActions: { flexDirection: 'row', gap: spacing.sm },
   signOutText: { fontSize: 12, color: colors.textMuted, fontWeight: '700' },
   summaryCard: { gap: spacing.xs },
   periodSwitch: {
@@ -242,6 +242,8 @@ const styles = StyleSheet.create({
   legendText: { fontSize: 11, color: colors.textMuted },
   section: { gap: spacing.md },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionAction: { fontSize: 13, color: colors.primary, fontWeight: '700' },
   divider: { height: 1, backgroundColor: colors.border },
   emptyText: { fontSize: 13, color: colors.textFaint, textAlign: 'center', paddingVertical: spacing.lg },
   hint: { fontSize: 11, color: colors.textFaint, textAlign: 'center', lineHeight: 18 },

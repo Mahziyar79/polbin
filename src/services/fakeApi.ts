@@ -35,7 +35,7 @@ export async function verifyOtp(phone: string, code: string): Promise<{ token: s
   }
   return {
     token: 'fake-jwt-token',
-    user: { id: 'user_1', phone, displayName: 'کاربر پل‌بین' },
+    user: { id: 'user_1', phone, displayName: 'کاربر پول‌بین' },
   };
 }
 

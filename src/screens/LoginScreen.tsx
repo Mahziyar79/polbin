@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -14,6 +15,8 @@ import { requestOtp, verifyOtp } from '../services/fakeApi';
 import { useAuth } from '../state/AuthContext';
 import { colors, radius, spacing } from '../theme';
 import { toEnDigits, toFaDigits } from '../utils/format';
+
+const LOGO = require('../public/logos/logo_vertical.png');
 
 export function LoginScreen() {
   const { signIn } = useAuth();
@@ -55,10 +58,7 @@ export function LoginScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.hero}>
-          <View style={styles.logo}>
-            <Text style={styles.logoText}>پ</Text>
-          </View>
-          <Text style={styles.title}>پل‌بین</Text>
+          <Image source={LOGO} style={styles.logo} resizeMode="contain" />
           <Text style={styles.subtitle}>
             پیامک‌های بانکی‌ات را بفرست، در چند ثانیه بفهم پولت کجا می‌رود.
           </Text>
@@ -120,17 +120,7 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, justifyContent: 'center', gap: spacing.xxl },
   hero: { alignItems: 'center', gap: spacing.sm },
-  logo: {
-    width: 72,
-    height: 72,
-    borderRadius: radius.xl,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  logoText: { color: '#fff', fontSize: 34, fontWeight: '800' },
-  title: { fontSize: 26, fontWeight: '800', color: colors.text },
+  logo: { width: 160, height: 160, marginBottom: spacing.sm },
   subtitle: {
     fontSize: 14,
     color: colors.textMuted,

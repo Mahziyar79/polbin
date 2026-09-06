@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   authUser: 'auth.user.v1',
   customCategories: 'categories.custom.v1',
   transactions: 'transactions.v1',
+  onboardingSeen: 'onboarding.seen.v1',
 } as const;
 
 /**

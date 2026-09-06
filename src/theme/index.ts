@@ -16,6 +16,15 @@ export const colors = {
   warningSoft: '#FDF3E2',
 } as const;
 
+/** رنگ‌های برگرفته از لوگو — برای onboarding و جاهایی که هویت برند لازم است. */
+export const brand = {
+  deep: '#015456',
+  green: '#01936B',
+  leaf: '#3FBF6B',
+  gold: '#FDAA04',
+  sand: '#FED33D',
+} as const;
+
 export const spacing = {
   xs: 4,
   sm: 8,

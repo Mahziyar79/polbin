@@ -20,6 +20,42 @@ export const JALALI_MONTHS = [
   'اسفند',
 ];
 
+/** روزهای ماه به حروف، برای نمایش «پانزدهم شهریور ۱۴۰۵». */
+export const JALALI_DAY_WORDS = [
+  '',
+  'یکم',
+  'دوم',
+  'سوم',
+  'چهارم',
+  'پنجم',
+  'ششم',
+  'هفتم',
+  'هشتم',
+  'نهم',
+  'دهم',
+  'یازدهم',
+  'دوازدهم',
+  'سیزدهم',
+  'چهاردهم',
+  'پانزدهم',
+  'شانزدهم',
+  'هفدهم',
+  'هجدهم',
+  'نوزدهم',
+  'بیستم',
+  'بیست‌ویکم',
+  'بیست‌ودوم',
+  'بیست‌وسوم',
+  'بیست‌وچهارم',
+  'بیست‌وپنجم',
+  'بیست‌وششم',
+  'بیست‌وهفتم',
+  'بیست‌وهشتم',
+  'بیست‌ونهم',
+  'سی‌ام',
+  'سی‌ویکم',
+];
+
 export const JALALI_WEEKDAYS = [
   'یکشنبه',
   'دوشنبه',
@@ -71,6 +107,12 @@ export function toJalali(date: Date): JalaliDate {
 export function jalaliMonthLabel(date: Date): string {
   const { jm, jy } = toJalali(date);
   return `${JALALI_MONTHS[jm - 1]} ${jy}`;
+}
+
+/** «پانزدهم شهریور ۱۴۰۵» — سال با ارقام لاتین برمی‌گردد و در UI فارسی می‌شود. */
+export function jalaliLongDate(date: Date): string {
+  const { jd, jm, jy } = toJalali(date);
+  return `${JALALI_DAY_WORDS[jd]} ${JALALI_MONTHS[jm - 1]} ${jy}`;
 }
 
 export function weekdayLabel(date: Date): string {

@@ -2,10 +2,22 @@ import { resolveCategory } from '../data/categories';
 import { Category, CategoryBreakdown, Insight, Transaction } from '../types';
 import { formatTomanShort, toFaDigits } from '../utils/format';
 
-const DAY = 86_400_000;
+/**
+ * ابتدای روزی که `daysAgo` روز قبل از امروز است.
+ *
+ * بازه‌ها بر پایه‌ی روز تقویمی‌اند نه ۲۴ ساعت غلتان، چون کاربر وقتی «امروز» را
+ * می‌زند انتظار دارد خرج‌های از نیمه‌شب را ببیند، نه خرج دیشب ساعت ۱۱ را.
+ */
+function startOfDay(daysAgo: number): number {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
 
+/** `days = 1` یعنی فقط امروز، `days = 7` یعنی امروز و شش روز قبلش. */
 export function withinLastDays(transactions: Transaction[], days: number): Transaction[] {
-  const threshold = Date.now() - days * DAY;
+  const threshold = startOfDay(days - 1);
   return transactions.filter(t => new Date(t.date).getTime() >= threshold);
 }
 
@@ -50,7 +62,7 @@ export function buildInsights(transactions: Transaction[], categories: Category[
   const thisWeek = withinLastDays(transactions, 7);
   const lastWeek = transactions.filter(t => {
     const ts = new Date(t.date).getTime();
-    return ts < Date.now() - 7 * DAY && ts >= Date.now() - 14 * DAY;
+    return ts < startOfDay(6) && ts >= startOfDay(13);
   });
 
   const thisWeekTotal = totalSpend(thisWeek);
