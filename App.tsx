@@ -8,6 +8,7 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AuthProvider } from './src/state/AuthContext';
+import { CategoriesProvider } from './src/state/CategoriesContext';
 import { TransactionsProvider } from './src/state/TransactionsContext';
 
 function App() {
@@ -15,9 +16,11 @@ function App() {
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" />
       <AuthProvider>
-        <TransactionsProvider>
-          <RootNavigator />
-        </TransactionsProvider>
+        <CategoriesProvider>
+          <TransactionsProvider>
+            <RootNavigator />
+          </TransactionsProvider>
+        </CategoriesProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

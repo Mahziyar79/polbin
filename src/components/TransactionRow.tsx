@@ -1,12 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { getCategory } from '../data/categories';
+import { useCategories } from '../state/CategoriesContext';
 import { Transaction } from '../types';
 import { colors, radius, spacing } from '../theme';
 import { formatRelativeDay, formatTime, formatToman } from '../utils/format';
 
 export function TransactionRow({ tx, highlighted }: { tx: Transaction; highlighted?: boolean }) {
-  const category = getCategory(tx.categoryId);
+  const { resolve } = useCategories();
+  const category = resolve(tx.categoryId);
 
   return (
     <View style={[styles.row, highlighted ? styles.highlighted : null]}>

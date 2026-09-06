@@ -12,6 +12,7 @@ import {
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
 import { CategoryBars } from '../components/CategoryBars';
+import { Fab } from '../components/Fab';
 import { InsightCard } from '../components/InsightCard';
 import { ProportionBar } from '../components/ProportionBar';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -19,6 +20,7 @@ import { TransactionRow } from '../components/TransactionRow';
 import { RootStackParamList } from '../navigation/types';
 import { buildBreakdown, buildInsights, totalSpend, withinLastDays } from '../services/analytics';
 import { useAuth } from '../state/AuthContext';
+import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
 import { formatToman, toFaDigits } from '../utils/format';
@@ -34,6 +36,7 @@ const PERIODS = [
 export function DashboardScreen({ navigation }: Props) {
   const { user, signOut } = useAuth();
   const { transactions, loading, error, lastAddedId, reload, takeNextFakeSms } = useTransactions();
+  const { categories } = useCategories();
   const [periodDays, setPeriodDays] = useState<number>(30);
 
   const periodTransactions = useMemo(
@@ -41,8 +44,14 @@ export function DashboardScreen({ navigation }: Props) {
     [transactions, periodDays],
   );
   const total = useMemo(() => totalSpend(periodTransactions), [periodTransactions]);
-  const breakdown = useMemo(() => buildBreakdown(periodTransactions), [periodTransactions]);
-  const insights = useMemo(() => buildInsights(transactions), [transactions]);
+  const breakdown = useMemo(
+    () => buildBreakdown(periodTransactions, categories),
+    [periodTransactions, categories],
+  );
+  const insights = useMemo(
+    () => buildInsights(transactions, categories),
+    [transactions, categories],
+  );
   const recent = useMemo(
     () =>
       [...transactions]
@@ -86,9 +95,16 @@ export function DashboardScreen({ navigation }: Props) {
             <Text style={styles.greeting}>سلام {user?.displayName ?? ''}</Text>
             <Text style={styles.monthLabel}>{toFaDigits(jalaliMonthLabel(new Date()))}</Text>
           </View>
-          <TouchableOpacity onPress={signOut} style={styles.signOut}>
-            <Text style={styles.signOutText}>خروج</Text>
-          </TouchableOpacity>
+          <View style={styles.topActions}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Categories')}
+              style={styles.signOut}>
+              <Text style={styles.signOutText}>دسته‌بندی‌ها</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={signOut} style={styles.signOut}>
+              <Text style={styles.signOutText}>خروج</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Card style={styles.summaryCard}>
@@ -157,20 +173,34 @@ export function DashboardScreen({ navigation }: Props) {
             ))}
           </Card>
         </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <AppButton title="شبیه‌سازی دریافت پیامک بانکی" onPress={handleSimulateSms} />
-        <Text style={styles.footerHint}>
+        <Text style={styles.hint}>
           در نسخه‌ی نهایی، پیامک از طریق «هم‌رسانی» اندروید مستقیم وارد اپ می‌شود.
         </Text>
-      </View>
+      </ScrollView>
+
+      {/* آخرین آیتم آرایه نزدیک‌ترین به دکمه است، پس اکشن اصلی را ته لیست می‌گذاریم. */}
+      <Fab
+        actions={[
+          {
+            key: 'simulate',
+            label: 'شبیه‌سازی پیامک بانکی',
+            emoji: '💬',
+            onPress: handleSimulateSms,
+          },
+          {
+            key: 'add',
+            label: 'افزودن تراکنش',
+            emoji: '➕',
+            onPress: () => navigation.navigate('AddTransaction'),
+          },
+        ]}
+      />
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xl },
+  content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: 96 },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg },
   errorTitle: { fontSize: 15, color: colors.textMuted, textAlign: 'center', lineHeight: 26 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -182,6 +212,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceAlt,
   },
+  topActions: { flexDirection: 'row', gap: spacing.sm },
   signOutText: { fontSize: 12, color: colors.textMuted, fontWeight: '700' },
   summaryCard: { gap: spacing.xs },
   periodSwitch: {
@@ -213,12 +244,5 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
   divider: { height: 1, backgroundColor: colors.border },
   emptyText: { fontSize: 13, color: colors.textFaint, textAlign: 'center', paddingVertical: spacing.lg },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: spacing.sm,
-  },
-  footerHint: { fontSize: 11, color: colors.textFaint, textAlign: 'center', lineHeight: 18 },
+  hint: { fontSize: 11, color: colors.textFaint, textAlign: 'center', lineHeight: 18 },
 });

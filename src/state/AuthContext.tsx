@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import { AuthUser } from '../services/fakeApi';
+import { readJSON, removeKey, STORAGE_KEYS, writeJSON } from '../services/storage';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -10,13 +11,23 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  // خواندن همگام است، پس کاربرِ ذخیره‌شده در همان اولین رندر موجود است
+  // و صفحه‌ی ورود لحظه‌ای پرش نمی‌زند.
+  const [user, setUser] = useState<AuthUser | null>(() =>
+    readJSON<AuthUser | null>(STORAGE_KEYS.authUser, null),
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
-      signIn: setUser,
-      signOut: () => setUser(null),
+      signIn: (nextUser: AuthUser) => {
+        writeJSON(STORAGE_KEYS.authUser, nextUser);
+        setUser(nextUser);
+      },
+      signOut: () => {
+        removeKey(STORAGE_KEYS.authUser);
+        setUser(null);
+      },
     }),
     [user],
   );

@@ -1,6 +1,8 @@
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
+import { AddTransactionScreen } from '../screens/AddTransactionScreen';
+import { CategoriesScreen } from '../screens/CategoriesScreen';
 import { ConfirmTransactionScreen } from '../screens/ConfirmTransactionScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -34,6 +36,16 @@ export function RootNavigator() {
             <Stack.Screen
               name="ConfirmTransaction"
               component={ConfirmTransactionScreen}
+              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+            />
+            <Stack.Screen
+              name="AddTransaction"
+              component={AddTransactionScreen}
+              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+            />
+            <Stack.Screen
+              name="Categories"
+              component={CategoriesScreen}
               options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
             />
           </>

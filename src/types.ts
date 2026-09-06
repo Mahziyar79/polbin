@@ -1,4 +1,5 @@
-export type CategoryId =
+/** دسته‌های از پیش تعریف‌شده؛ پارسر پیامک فقط همین‌ها را برمی‌گرداند. */
+export type BuiltInCategoryId =
   | 'food'
   | 'grocery'
   | 'transport'
@@ -9,11 +10,16 @@ export type CategoryId =
   | 'transfer'
   | 'other';
 
+/** کاربر می‌تواند دسته‌ی دلخواه بسازد، پس شناسه رشته‌ی آزاد است. */
+export type CategoryId = string;
+
 export interface Category {
   id: CategoryId;
   label: string;
   color: string;
   emoji: string;
+  /** دسته‌های ساخته‌ی کاربر؛ فقط این‌ها قابل حذف‌اند. */
+  isCustom?: boolean;
 }
 
 export type TransactionType = 'debit' | 'credit';

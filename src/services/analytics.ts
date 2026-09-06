@@ -1,5 +1,5 @@
-import { getCategory } from '../data/categories';
-import { CategoryBreakdown, Insight, Transaction } from '../types';
+import { resolveCategory } from '../data/categories';
+import { Category, CategoryBreakdown, Insight, Transaction } from '../types';
 import { formatTomanShort, toFaDigits } from '../utils/format';
 
 const DAY = 86_400_000;
@@ -15,7 +15,10 @@ export function totalSpend(transactions: Transaction[]): number {
     .reduce((sum, t) => sum + t.amount, 0);
 }
 
-export function buildBreakdown(transactions: Transaction[]): CategoryBreakdown[] {
+export function buildBreakdown(
+  transactions: Transaction[],
+  categories: Category[],
+): CategoryBreakdown[] {
   const debits = transactions.filter(t => t.type === 'debit');
   const total = totalSpend(debits);
 
@@ -29,7 +32,7 @@ export function buildBreakdown(transactions: Transaction[]): CategoryBreakdown[]
 
   return Array.from(buckets.entries())
     .map(([categoryId, bucket]) => ({
-      category: getCategory(categoryId as CategoryBreakdown['category']['id']),
+      category: resolveCategory(categories, categoryId),
       total: bucket.total,
       count: bucket.count,
       share: total > 0 ? (bucket.total / total) * 100 : 0,
@@ -41,7 +44,7 @@ export function buildBreakdown(transactions: Transaction[]): CategoryBreakdown[]
  * تولید بینش/توصیه‌ی کوتاه از روی تراکنش‌ها.
  * قاعده‌محور است تا هیچ وابستگی به سرویس بیرونی نداشته باشد.
  */
-export function buildInsights(transactions: Transaction[]): Insight[] {
+export function buildInsights(transactions: Transaction[], categories: Category[]): Insight[] {
   const insights: Insight[] = [];
 
   const thisWeek = withinLastDays(transactions, 7);
@@ -52,7 +55,7 @@ export function buildInsights(transactions: Transaction[]): Insight[] {
 
   const thisWeekTotal = totalSpend(thisWeek);
   const lastWeekTotal = totalSpend(lastWeek);
-  const breakdown = buildBreakdown(thisWeek);
+  const breakdown = buildBreakdown(thisWeek, categories);
   const top = breakdown[0];
 
   if (top && top.share >= 30) {
