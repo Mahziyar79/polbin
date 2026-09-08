@@ -23,10 +23,14 @@ const BANKS = [
   'بلوبانک',
 ];
 
-const CREDIT_KEYWORDS = ['واریز', 'دریافت', 'بستانکار'];
+const CREDIT_KEYWORDS = ['واریز', 'دریافت', 'بستانکار', 'حقوق', 'پاداش', 'عودت', 'برگشت وجه'];
 
 /** کلیدواژه‌ی فروشگاه → دسته. اولین تطابق برنده است. */
 const MERCHANT_RULES: Array<{ pattern: RegExp; merchant: string; category: CategoryId }> = [
+  // واریزها اول می‌آیند: پیامک واریز پذیرنده ندارد و بدون این قاعده‌ها
+  // فیلد «منبع درآمد» خالی می‌ماند و دکمه‌ی ثبت غیرفعال می‌شود.
+  { pattern: /حقوق|دستمزد|مستمری/, merchant: 'حقوق', category: 'salary' },
+  { pattern: /عودت|برگشت\s*وجه|استرداد/, merchant: 'عودت وجه', category: 'refund' },
   { pattern: /اسنپ\s*فود|اسنپ‌فود|snappfood/i, merchant: 'اسنپ‌فود', category: 'food' },
   { pattern: /تاکسی\s*اسنپ|اسنپ|snapp/i, merchant: 'اسنپ', category: 'transport' },
   { pattern: /تپسی|tapsi/i, merchant: 'تپسی', category: 'transport' },

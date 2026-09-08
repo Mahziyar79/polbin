@@ -4,16 +4,16 @@ import {
   NavigationContainer,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AddTransactionScreen } from '../screens/AddTransactionScreen';
+import { BackupScreen } from '../screens/BackupScreen';
+import { CalendarScreen } from '../screens/CalendarScreen';
 import { CategoriesScreen } from '../screens/CategoriesScreen';
 import { ConfirmTransactionScreen } from '../screens/ConfirmTransactionScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
-import { LoginScreen } from '../screens/LoginScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { subscribeToSharedText } from '../services/shareIntent';
-import { readJSON, STORAGE_KEYS, writeJSON } from '../services/storage';
-import { useAuth } from '../state/AuthContext';
+import { readJSON, STORAGE_KEYS } from '../services/storage';
 import { colors } from '../theme';
 import { RootStackParamList } from './types';
 
@@ -34,64 +34,85 @@ const navTheme = {
 };
 
 export function RootNavigator({ initialSharedText }: { initialSharedText?: string | null }) {
-  const { user } = useAuth();
-
-  // متن هم‌رسانی‌شده تا وقتی هم ناوبری آماده شود و هم کاربر وارد شده باشد
-  // اینجا منتظر می‌ماند؛ اگر کاربر وارد نشده، بعد از ورود باز می‌شود.
+  // متن هم‌رسانی‌شده تا آماده شدن ناوبری اینجا منتظر می‌ماند. اگر اپ بسته بوده،
+  // ناوبری چند فریم بعد از رسیدن متن آماده می‌شود.
   const [pendingSms, setPendingSms] = useState<string | null>(initialSharedText ?? null);
   const [navigatorReady, setNavigatorReady] = useState(false);
 
-  // خواندن همگام است، پس در همان اولین رندر می‌دانیم onboarding را نشان بدهیم یا نه
-  // و کاربر قدیمی هیچ پرشی نمی‌بیند. خروج از حساب این را پاک نمی‌کند.
-  const [onboardingSeen, setOnboardingSeen] = useState(() =>
-    readJSON<boolean>(STORAGE_KEYS.onboardingSeen, false),
+  // فقط یک‌بار خوانده می‌شود و دیگر عوض نمی‌شود.
+  //
+  // قبلاً تا وقتی onboarding دیده نشده بود، اصلاً NavigationContainer رندر نمی‌شد
+  // و بعد از تمام شدنش تازه ساخته می‌شد. یعنی کاربر تازه، چند لحظه بعد از mount
+  // شدن استک اولین صفحه را باز می‌کرد و گاهی react-native-screens وسط همان
+  // mountِ اول کرش می‌کرد. حالا استک از ثانیه‌ی اول کامل است و معرفی هم فقط
+  // یکی از صفحه‌هایش است.
+  const [initialRoute] = useState<'Onboarding' | 'Dashboard'>(() =>
+    readJSON<boolean>(STORAGE_KEYS.onboardingSeen, false) ? 'Dashboard' : 'Onboarding',
   );
 
-  function completeOnboarding() {
-    writeJSON(STORAGE_KEYS.onboardingSeen, true);
-    setOnboardingSeen(true);
-  }
+  // پیامکِ منتظر وقتی کاربر وسط معرفی است رد می‌شود. برای اینکه بعد از تمام
+  // شدن معرفی دوباره امتحان شود، این شمارنده با هر جابه‌جایی صفحه بالا می‌رود —
+  // ولی فقط وقتی واقعاً پیامکی در صف است، تا ناوبری عادی رندر اضافه نگیرد.
+  const [routeTick, setRouteTick] = useState(0);
+  const pendingRef = useRef<string | null>(pendingSms);
+  pendingRef.current = pendingSms;
 
   useEffect(() => subscribeToSharedText(setPendingSms), []);
 
   useEffect(() => {
-    if (!pendingSms || !user || !navigatorReady || !navigationRef.isReady()) return;
+    if (!pendingSms || !navigatorReady || !navigationRef.isReady()) return;
+
+    // کاربر تازه هنوز وسط معرفی است؛ نباید از رویش بپریم.
+    if (navigationRef.getCurrentRoute()?.name === 'Onboarding') return;
+
     navigationRef.navigate('ConfirmTransaction', { rawSms: pendingSms });
     setPendingSms(null);
-  }, [pendingSms, user, navigatorReady]);
-
-  if (!onboardingSeen) {
-    return <OnboardingScreen onDone={completeOnboarding} />;
-  }
+  }, [pendingSms, navigatorReady, routeTick]);
 
   return (
     <NavigationContainer
       ref={navigationRef}
       theme={navTheme}
-      onReady={() => setNavigatorReady(true)}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
-          <>
-            <Stack.Screen name="Dashboard" component={DashboardScreen} />
-            <Stack.Screen
-              name="ConfirmTransaction"
-              component={ConfirmTransactionScreen}
-              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-            />
-            <Stack.Screen
-              name="AddTransaction"
-              component={AddTransactionScreen}
-              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-            />
-            <Stack.Screen
-              name="Categories"
-              component={CategoriesScreen}
-              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-            />
-          </>
-        ) : (
-          <Stack.Screen name="Login" component={LoginScreen} />
-        )}
+      onReady={() => setNavigatorReady(true)}
+      onStateChange={() => {
+        if (pendingRef.current) setRouteTick(tick => tick + 1);
+      }}>
+      {/*
+        صفحه‌های فرعی عمداً `presentation: 'modal'` ندارند.
+        آن حالت در react-native-screens یک ScreenStack جداگانه می‌سازد و در بیلد
+        release با معماری جدید (Fabric) شمارش فرزندها به هم می‌ریزد:
+        «addViewAt: failed to insert view … at index 2» و اپ می‌بندد.
+        در بیلد debug خودش را نشان نمی‌دهد، برای همین تا اولین APK release دیده نشد.
+        روی اندروید ظاهر با همان `slide_from_bottom` یکسان است.
+      */}
+      <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen
+          name="ConfirmTransaction"
+          component={ConfirmTransactionScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="AddTransaction"
+          component={AddTransactionScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="Categories"
+          component={CategoriesScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="Calendar"
+          component={CalendarScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="Backup"
+          component={BackupScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

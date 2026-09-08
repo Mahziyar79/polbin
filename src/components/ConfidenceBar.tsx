@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { colors, radius, spacing } from '../theme';
 import { toFaDigits } from '../utils/format';
+import { Text } from './Text';
 
 /** نوار «اطمینان پارسر» — فقط در صفحه‌ی تایید پیامک استفاده می‌شود. */
 export function ConfidenceBar({ confidence }: { confidence: number }) {
@@ -13,7 +14,7 @@ export function ConfidenceBar({ confidence }: { confidence: number }) {
             styles.fill,
             {
               width: `${confidence * 100}%`,
-              backgroundColor: confidence >= 0.8 ? colors.success : colors.warning,
+              backgroundColor: confidence >= 0.8 ? colors.success : colors.expense,
             },
           ]}
         />

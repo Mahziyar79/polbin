@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { colors, radius, spacing } from '../theme';
+import { Text } from './Text';
 
 export interface FabAction {
   key: string;

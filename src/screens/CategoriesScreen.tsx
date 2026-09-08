@@ -1,22 +1,31 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
 import { FormScreenHeader } from '../components/FormScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { CATEGORY_COLOR_CHOICES, CATEGORY_EMOJI_CHOICES } from '../data/categories';
+import { CATEGORY_COLOR_CHOICES, CATEGORY_EMOJI_CHOICES, fallbackIdFor } from '../data/categories';
 import { RootStackParamList } from '../navigation/types';
 import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
-import { Category } from '../types';
+import { Category, TransactionType } from '../types';
 import { toFaDigits } from '../utils/format';
+import { Text } from '../components/Text';
+import { TextInput } from '../components/TextInput';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Categories'>;
 
+const KINDS = [
+  { value: 'debit', label: 'دسته‌ی خرج', color: colors.expense, tint: colors.expenseSoft },
+  { value: 'credit', label: 'دسته‌ی درآمد', color: colors.success, tint: colors.successSoft },
+] as const;
+
 export function CategoriesScreen({ navigation }: Props) {
   const { categories, addCategory, deleteCategory, canDelete } = useCategories();
+
+  const [kind, setKind] = useState<TransactionType>('debit');
   const { transactions, reassignCategory } = useTransactions();
 
   const [label, setLabel] = useState('');
@@ -24,8 +33,10 @@ export function CategoriesScreen({ navigation }: Props) {
   const [color, setColor] = useState(CATEGORY_COLOR_CHOICES[0]);
   const [error, setError] = useState<string | null>(null);
 
+  const visible = categories.filter(category => category.kind === kind);
+
   function handleAdd() {
-    const validationError = addCategory({ label, emoji, color });
+    const validationError = addCategory({ label, emoji, color, kind });
     if (validationError) {
       setError(validationError);
       return;
@@ -38,7 +49,9 @@ export function CategoriesScreen({ navigation }: Props) {
     const affected = transactions.filter(tx => tx.categoryId === category.id).length;
     const message =
       affected > 0
-        ? `${toFaDigits(affected)} تراکنش با این دسته ثبت شده که به «متفرقه» منتقل می‌شوند.`
+        ? `${toFaDigits(affected)} تراکنش با این دسته ثبت شده که به «${
+            category.kind === 'credit' ? 'سایر درآمد' : 'متفرقه'
+          }» منتقل می‌شوند.`
         : 'این دسته حذف شود؟';
 
     Alert.alert(`حذف «${category.label}»`, message, [
@@ -47,7 +60,7 @@ export function CategoriesScreen({ navigation }: Props) {
         text: 'حذف',
         style: 'destructive',
         onPress: () => {
-          reassignCategory(category.id, 'other');
+          reassignCategory(category.id, fallbackIdFor(category.kind));
           deleteCategory(category.id);
         },
       },
@@ -59,11 +72,30 @@ export function CategoriesScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <FormScreenHeader
           title="دسته‌بندی‌ها"
-          subtitle="دسته‌ی دلخواه خودت را بساز. دسته‌های پیش‌فرض چون پارسر پیامک به آن‌ها تکیه دارد حذف نمی‌شوند."
+          subtitle="دسته‌ی دلخواه خودت را برای خرج یا درآمد بساز. دسته‌های پیش‌فرض چون پارسر پیامک به آن‌ها تکیه دارد حذف نمی‌شوند."
         />
 
         <Card style={styles.card}>
           <Text style={styles.sectionLabel}>دسته‌ی جدید</Text>
+
+          <View style={styles.kindSwitch}>
+            {KINDS.map(option => {
+              const active = option.value === kind;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  onPress={() => setKind(option.value)}
+                  style={[
+                    styles.kindChip,
+                    active ? { backgroundColor: option.tint, borderColor: option.color } : null,
+                  ]}>
+                  <Text style={[styles.kindText, active ? { color: option.color } : null]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
           <TextInput
             value={label}
@@ -115,11 +147,11 @@ export function CategoriesScreen({ navigation }: Props) {
         </Card>
 
         <Text style={styles.sectionTitle}>
-          همه‌ی دسته‌ها ({toFaDigits(categories.length)})
+          {kind === 'credit' ? 'دسته‌های درآمد' : 'دسته‌های خرج'} ({toFaDigits(visible.length)})
         </Text>
 
         <Card>
-          {categories.map((category, index) => (
+          {visible.map((category, index) => (
             <View key={category.id}>
               {index > 0 ? <View style={styles.divider} /> : null}
               <View style={styles.row}>
@@ -157,6 +189,17 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xl },
   card: { gap: spacing.sm },
   sectionLabel: { fontSize: 15, fontWeight: '800', color: colors.text, marginBottom: spacing.xs },
+  kindSwitch: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  kindChip: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+  },
+  kindText: { fontSize: 13, fontWeight: '800', color: colors.textMuted },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginTop: spacing.sm },
   input: {

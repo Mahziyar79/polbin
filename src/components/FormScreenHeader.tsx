@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { colors, spacing } from '../theme';
+import { Text } from './Text';
 
 /** تیتر و زیرتیتر مشترک بالای صفحه‌های فرم. */
 export function FormScreenHeader({ title, subtitle }: { title: string; subtitle: string }) {

@@ -1,15 +1,42 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useCategories } from '../state/CategoriesContext';
 import { Transaction } from '../types';
 import { colors, radius, spacing } from '../theme';
 import { formatRelativeDay, formatTime, formatToman } from '../utils/format';
+import { Text } from './Text';
 
-export function TransactionRow({ tx, highlighted }: { tx: Transaction; highlighted?: boolean }) {
+interface Props {
+  tx: Transaction;
+  highlighted?: boolean;
+  /** اگر داده شود، ردیف قابل لمس می‌شود و حذف را پیشنهاد می‌دهد. */
+  onDelete?: (id: string) => void;
+}
+
+/**
+ * یک ردیف تراکنش — در داشبورد و تقویم از همین استفاده می‌شود.
+ *
+ * تایید حذف عمداً همین‌جاست نه در صفحه‌ها: متن تایید و شکل دیالوگ یک‌بار
+ * نوشته می‌شود و هر صفحه‌ای که ردیف را نشان می‌دهد همان رفتار را می‌گیرد.
+ */
+export function TransactionRow({ tx, highlighted, onDelete }: Props) {
   const { resolve } = useCategories();
-  const category = resolve(tx.categoryId);
+  const category = resolve(tx.categoryId, tx.type);
 
-  return (
+  function confirmDelete() {
+    if (!onDelete) return;
+
+    Alert.alert(
+      'حذف تراکنش',
+      `«${tx.merchant}» به مبلغ ${formatToman(tx.amount)}\n\nاین تراکنش پاک می‌شود و برنمی‌گردد.`,
+      [
+        { text: 'انصراف', style: 'cancel' },
+        { text: 'حذف', style: 'destructive', onPress: () => onDelete(tx.id) },
+      ],
+    );
+  }
+
+  const content = (
     <View style={[styles.row, highlighted ? styles.highlighted : null]}>
       <View style={[styles.avatar, { backgroundColor: category.color + '1F' }]}>
         <Text style={styles.emoji}>{category.emoji}</Text>
@@ -28,6 +55,14 @@ export function TransactionRow({ tx, highlighted }: { tx: Transaction; highlight
         {tx.type === 'credit' ? '+' : '−'} {formatToman(tx.amount, false)}
       </Text>
     </View>
+  );
+
+  if (!onDelete) return content;
+
+  return (
+    <TouchableOpacity onPress={confirmDelete} activeOpacity={0.6}>
+      {content}
+    </TouchableOpacity>
   );
 }
 

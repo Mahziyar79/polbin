@@ -8,7 +8,7 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AppLaunchProps, readInitialSharedText } from './src/services/shareIntent';
-import { AuthProvider } from './src/state/AuthContext';
+import { ProfileProvider } from './src/state/ProfileContext';
 import { CategoriesProvider } from './src/state/CategoriesContext';
 import { TransactionsProvider } from './src/state/TransactionsContext';
 
@@ -20,13 +20,13 @@ function App(props: AppLaunchProps) {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" />
-      <AuthProvider>
+      <ProfileProvider>
         <CategoriesProvider>
           <TransactionsProvider>
             <RootNavigator initialSharedText={initialSharedText} />
           </TransactionsProvider>
         </CategoriesProvider>
-      </AuthProvider>
+      </ProfileProvider>
     </SafeAreaProvider>
   );
 }

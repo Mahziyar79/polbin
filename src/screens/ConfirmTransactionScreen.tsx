@@ -1,13 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card } from '../components/Card';
 import { ConfidenceBar } from '../components/ConfidenceBar';
 import { FormFooter } from '../components/FormFooter';
@@ -21,6 +14,7 @@ import { useTransactions } from '../state/TransactionsContext';
 import { colors, spacing } from '../theme';
 import { ParsedSms } from '../types';
 import { toFaDigits } from '../utils/format';
+import { Text } from '../components/Text';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ConfirmTransaction'>;
 
@@ -44,6 +38,7 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         amount: result.amount,
         merchant: result.merchant,
         categoryId: result.categoryId,
+        type: result.type,
       });
     });
     return () => {
@@ -63,7 +58,7 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         date: parsed.date,
         bank: parsed.bank ?? undefined,
         cardLast4: parsed.cardLast4 ?? undefined,
-        type: parsed.type,
+        type: form.type,
         rawSms,
       });
       navigation.navigate('Dashboard');

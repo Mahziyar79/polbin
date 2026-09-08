@@ -13,18 +13,20 @@
 
 ## وضعیت فعلی
 
-اپ با **داده‌ی fake** و بدون سرور کار می‌کند، ولی داده روی خود گوشی می‌ماند (MMKV):
+اپ **بدون سرور** کار می‌کند و همه‌ی داده روی خود گوشی می‌ماند (MMKV). حساب کاربری
+و ورود در کار نیست — با باز کردن اپ مستقیم وارد داشبورد می‌شوی.
 
 | صفحه | فایل | کار |
 |---|---|---|
-| ورود ساده | `src/screens/LoginScreen.tsx` | شماره موبایل → کد ۴ رقمی (هر کدی پذیرفته می‌شود) |
+| معرفی اولیه | `src/screens/OnboardingScreen.tsx` | سه قدم کار با اپ + پرسیدن نام (اختیاری) |
+| داشبورد | `src/screens/DashboardScreen.tsx` | تب هزینه/درآمد، مجموع بازه، نمودار دسته‌ها، تراکنش‌های اخیر، بینش‌ها |
 | تایید تراکنش | `src/screens/ConfirmTransactionScreen.tsx` | نمایش نتیجه‌ی پارس پیامک، اصلاح مبلغ/فروشگاه/دسته، تایید |
-| افزودن دستی | `src/screens/AddTransactionScreen.tsx` | ثبت خرجی که پیامکش نیامده |
+| افزودن دستی | `src/screens/AddTransactionScreen.tsx` | ثبت خرج یا درآمدی که پیامکش نیامده |
 | دسته‌بندی‌ها | `src/screens/CategoriesScreen.tsx` | ساخت و حذف دسته‌ی دلخواه |
-| داشبورد | `src/screens/DashboardScreen.tsx` | مجموع خرج، نمودار دسته‌بندی، بینش‌ها، تراکنش‌های اخیر |
+| تقویم | `src/screens/CalendarScreen.tsx` | تقویم شمسی با تراکنش‌های هر روز |
+| پشتیبان و خروجی | `src/screens/BackupScreen.tsx` | خروجی JSON، بازگردانی از فایل، گزارش PDF |
 
-ناوبری در `src/navigation/RootNavigator.tsx` است؛ تا وقتی کاربر وارد نشده فقط
-صفحه‌ی ورود در استک است، بعد از ورود داشبورد + سه صفحه‌ی modal.
+ناوبری در `src/navigation/RootNavigator.tsx` است: داشبورد در پایه‌ی استک و بقیه modal.
 
 ## اجرا
 
@@ -52,12 +54,13 @@ cd android && ./gradlew.bat app:installDebug -PreactNativeDevServerPort=8081
 ```
 src/
   components/   قطعات مشترک UI — فرم تراکنش، نوار پایینی فرم، FAB، نمودارها، ردیف تراکنش
-  data/         دسته‌های پیش‌فرض + تراکنش‌های نمونه + پیامک‌های خام نمونه
+  data/         دسته‌های پیش‌فرض خرج و درآمد + پیامک‌های خام نمونه (فقط برای تست پارسر)
   hooks/        useTransactionForm — حالت مشترک فرم بین دو صفحه
   navigation/   استک اصلی و تایپ پارامترها
-  screens/      پنج صفحه
+  screens/      هفت صفحه
   services/     smsParser (regex) · analytics (بینش‌ها) · fakeApi (لایه‌ی جعلی شبکه) · storage (MMKV)
-  state/        AuthContext · CategoriesContext · TransactionsContext
+                backup (JSON) · reportHtml (PDF) · deviceFiles (ماژول نیتیو) · shareIntent
+  state/        ProfileContext · CategoriesContext · TransactionsContext
   theme/        رنگ، فاصله، شعاع
   utils/        تبدیل تاریخ شمسی و قالب‌بندی اعداد/مبالغ فارسی
 ```
@@ -77,8 +80,6 @@ src/
 
 | تابع | endpoint آینده |
 |---|---|
-| `requestOtp` | `POST /auth/otp/request` |
-| `verifyOtp` | `POST /auth/otp/verify` |
 | `parseSmsRemote` | `POST /sms/parse` |
 | `fetchTransactions` | `GET /transactions` |
 | `createTransaction` | `POST /transactions` |
@@ -92,13 +93,14 @@ src/
 فهرست کامل کارهای باقی‌مانده، باگ‌های شناخته‌شده و بدهی فنی در [TODO.md](TODO.md) است.
 سه مورد مهم‌تر از بقیه:
 
-1. **بک‌اند** — Express + PostgreSQL، انتقال `smsParser` به سرور، احراز هویت با OTP واقعی.
-2. **قبل از انتشار** — برگرداندن `reactNativeArchitectures` به همه‌ی معماری‌ها، وگرنه اپ روی گوشی واقعی نصب نمی‌شود.
-3. **حذف دکمه‌ی شبیه‌سازی پیامک** که حالا فقط ابزار توسعه است.
+1. **کلید امضای release** — نسخه‌ی فعلی با کلید debug امضا می‌شود؛ کافه‌بازار قبولش نمی‌کند.
+2. **تست روی گوشی ARM واقعی** — تمام تست‌ها تا امروز روی شبیه‌ساز `x86_64` بوده.
+3. **بک‌اند** — Express + PostgreSQL در `polbin_server` نوشته و تست شده ولی عمداً وصل نشده؛
+   با آمدنش احراز هویت واقعی (OTP + توکن) هم برمی‌گردد.
 
 ## آنچه هنوز جعلی است
 
-- کد OTP اعتبارسنجی واقعی ندارد؛ هر کد ۴ رقمی پذیرفته می‌شود.
-- تراکنش‌ها یک بار از داده‌ی نمونه seed می‌شوند؛ خبری از سرور واقعی نیست.
+- هیچ احراز هویتی وجود ندارد. پروفایل فقط یک نام محلی است، نه حساب کاربری.
+- `fakeApi` هنوز واسطه‌ی «شبکه» است ولی چیزی جز حافظه‌ی گوشی پشتش نیست.
 - تاریخ تراکنش از متن پیامک استخراج نمی‌شود و «الان» در نظر گرفته می‌شود.
-- دکمه‌ی «شبیه‌سازی دریافت پیامک» فقط برای تست روی شبیه‌ساز مانده؛ Share Intent واقعی کار می‌کند.
+- `src/data/fakeSmsInbox.ts` فقط نمونه‌ی پیامک برای تست پارسر است و هیچ صفحه‌ای آن را نمی‌خواند.

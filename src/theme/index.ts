@@ -1,28 +1,29 @@
 export const colors = {
-  bg: '#F4F6F9',
+  bg: '#F7FAF9',
   surface: '#FFFFFF',
-  surfaceAlt: '#F0F3F8',
-  text: '#111827',
-  textMuted: '#6B7280',
-  textFaint: '#9CA3AF',
-  border: '#E5E7EB',
-  primary: '#2E6BE6',
-  primarySoft: '#E7EFFE',
-  success: '#12A150',
-  successSoft: '#E4F5EC',
+  /** پس‌زمینه‌ی فرورفته: ورودی‌ها، چیپ‌های غیرفعال، ریل نمودارها. */
+  surfaceAlt: '#ECF2F0',
+  text: '#12343B',
+  textMuted: '#51696F',
+  textFaint: '#8AA1A6',
+  border: '#DEE8E5',
+
+  primary: '#008F83',
+  primaryDark: '#005A63',
+  primarySoft: '#DFF1EE',
+
+  /** واریز و پیام‌های مثبت. */
+  success: '#16B86A',
+  successSoft: '#E2F7EC',
+
+  expense: '#C0554F',
+  expenseSoft: '#F8EBEA',
+
+  /** موجودی و تاکیدهای طلایی. */
+  gold: '#FFC52E',
+
   danger: '#E5484D',
   dangerSoft: '#FDECEC',
-  warning: '#E08700',
-  warningSoft: '#FDF3E2',
-} as const;
-
-/** رنگ‌های برگرفته از لوگو — برای onboarding و جاهایی که هویت برند لازم است. */
-export const brand = {
-  deep: '#015456',
-  green: '#01936B',
-  leaf: '#3FBF6B',
-  gold: '#FDAA04',
-  sand: '#FED33D',
 } as const;
 
 export const spacing = {
@@ -43,10 +44,33 @@ export const radius = {
 } as const;
 
 /**
- * فونت پیش‌فرض سیستم فعلاً استفاده می‌شود.
- * TODO: افزودن فونت وزیرمتن به assets/fonts و لینک با `npx react-native-asset`.
+ * وزیرمتن ۳۳.۰.۳ — فایل‌ها در `assets/fonts` و لینک‌شده به اندروید.
+ *
+ * فقط چهار وزن ارسال می‌شود چون هر فایل حدود ۱۲۰ کیلوبایت به APK اضافه می‌کند
+ * و کد فقط از همین‌ها استفاده می‌کند.
+ *
+ * نسخه‌ی «Farsi-Digits» عمداً استفاده نشده: آن نسخه ارقام لاتین را با شکل
+ * فارسی رندر می‌کند، ولی ما ارقام را صریح با `toFaDigits` تبدیل می‌کنیم و
+ * دو لایه تبدیل روی هم فقط قابل پیش‌بینی بودن را از بین می‌برد.
  */
 export const fonts = {
-  regular: undefined as string | undefined,
-  bold: undefined as string | undefined,
+  regular: 'Vazirmatn-Regular',
+  semiBold: 'Vazirmatn-SemiBold',
+  bold: 'Vazirmatn-Bold',
+  extraBold: 'Vazirmatn-ExtraBold',
 } as const;
+
+/**
+ * انتخاب فایل فونت از روی `fontWeight`.
+ *
+ * روی اندروید `fontWeight` با فونت سفارشی نادیده گرفته می‌شود و باید نام
+ * خانواده‌ی دقیق داده شود، وگرنه همه‌چیز با وزن Regular رندر می‌شود.
+ */
+export function fontFamilyForWeight(weight?: string | number | null): string {
+  const numeric = Number(weight);
+
+  if (weight === 'bold' || numeric >= 800) return fonts.extraBold;
+  if (numeric >= 700) return fonts.bold;
+  if (numeric >= 500) return fonts.semiBold;
+  return fonts.regular;
+}

@@ -1,6 +1,7 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, ViewStyle } from 'react-native';
 import { colors, radius, spacing } from '../theme';
+import { Text } from './Text';
 
 type Variant = 'primary' | 'secondary' | 'ghost';
 

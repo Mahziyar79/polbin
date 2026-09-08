@@ -1,3 +1,5 @@
+export type TransactionType = 'debit' | 'credit';
+
 /** دسته‌های از پیش تعریف‌شده؛ پارسر پیامک فقط همین‌ها را برمی‌گرداند. */
 export type BuiltInCategoryId =
   | 'food'
@@ -18,11 +20,11 @@ export interface Category {
   label: string;
   color: string;
   emoji: string;
+  /** دسته‌ی خرج است یا درآمد — هر تراکنش فقط دسته‌های هم‌نوع خودش را می‌بیند. */
+  kind: TransactionType;
   /** دسته‌های ساخته‌ی کاربر؛ فقط این‌ها قابل حذف‌اند. */
   isCustom?: boolean;
 }
-
-export type TransactionType = 'debit' | 'credit';
 
 export interface Transaction {
   id: string;
@@ -50,6 +52,11 @@ export interface ParsedSms {
   /** میزان اطمینان پارسر بین ۰ تا ۱ */
   confidence: number;
   raw: string;
+}
+
+/** پروفایل محلی کاربر. نام خالی یعنی کاربر هنوز اسمش را نگفته. */
+export interface Profile {
+  displayName: string;
 }
 
 export interface CategoryBreakdown {

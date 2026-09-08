@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { createTransaction, fetchTransactions, FAKE_SMS_COUNT, getFakeSms } from '../services/fakeApi';
+import { createTransaction, fetchTransactions } from '../services/fakeApi';
 import { readJSON, STORAGE_KEYS, writeJSON } from '../services/storage';
 import { CategoryId, Transaction } from '../types';
 
@@ -11,12 +11,14 @@ interface TransactionsContextValue {
   /** آخرین تراکنشی که کاربر تایید کرده — برای هایلایت در داشبورد. */
   lastAddedId: string | null;
   addTransaction: (input: Omit<Transaction, 'id'>) => Promise<Transaction>;
+  /** حذف یک تراکنش. برگشت‌ناپذیر است، پس صدا زدنش باید تایید گرفته باشد. */
+  removeTransaction: (id: string) => void;
   /** تراکنش‌های یک دسته را به دسته‌ی دیگر منتقل می‌کند — موقع حذف دسته. */
   reassignCategory: (fromId: CategoryId, toId: CategoryId) => void;
   /** گرفتن دوباره از سرور و بازنویسی کش محلی. */
   reload: () => void;
-  /** پیامک بعدی از صف نمونه؛ جای Share Intent واقعی را می‌گیرد. */
-  takeNextFakeSms: () => string;
+  /** جایگزینی کامل لیست — برای بازگردانی از فایل پشتیبان. */
+  replaceAll: (next: Transaction[]) => void;
 }
 
 const TransactionsContext = createContext<TransactionsContextValue | null>(null);
@@ -33,7 +35,6 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(cached === null);
   const [error, setError] = useState<string | null>(null);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
-  const [smsCursor, setSmsCursor] = useState(0);
   const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
@@ -64,6 +65,11 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
 
   const reload = useCallback(() => setReloadToken(prev => prev + 1), []);
 
+  const replaceAll = useCallback((next: Transaction[]) => {
+    writeJSON(STORAGE_KEYS.transactions, next);
+    setTransactions(next);
+  }, []);
+
   const addTransaction = useCallback(
     async (input: Omit<Transaction, 'id'>) => {
       const created = await createTransaction(input);
@@ -78,6 +84,16 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
     [],
   );
 
+  const removeTransaction = useCallback((id: string) => {
+    setTransactions(prev => {
+      const next = prev.filter(tx => tx.id !== id);
+      writeJSON(STORAGE_KEYS.transactions, next);
+      return next;
+    });
+    // اگر همین تراکنش هایلایت بود، هایلایتِ یک ردیفِ حذف‌شده باقی نماند.
+    setLastAddedId(prev => (prev === id ? null : prev));
+  }, []);
+
   const reassignCategory = useCallback((fromId: CategoryId, toId: CategoryId) => {
     setTransactions(prev => {
       const next = prev.map(tx => (tx.categoryId === fromId ? { ...tx, categoryId: toId } : tx));
@@ -86,12 +102,6 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
     });
   }, []);
 
-  const takeNextFakeSms = useCallback(() => {
-    const sms = getFakeSms(smsCursor);
-    setSmsCursor(prev => (prev + 1) % FAKE_SMS_COUNT);
-    return sms;
-  }, [smsCursor]);
-
   const value = useMemo<TransactionsContextValue>(
     () => ({
       transactions,
@@ -99,9 +109,10 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
       error,
       lastAddedId,
       addTransaction,
+      removeTransaction,
       reassignCategory,
       reload,
-      takeNextFakeSms,
+      replaceAll,
     }),
     [
       transactions,
@@ -109,9 +120,10 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
       error,
       lastAddedId,
       addTransaction,
+      removeTransaction,
       reassignCategory,
       reload,
-      takeNextFakeSms,
+      replaceAll,
     ],
   );
 

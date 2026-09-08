@@ -57,7 +57,10 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+// R8 حدود نیمی از classes.dex را حذف می‌کند. ری‌اکت‌نیتیو قوانین نگهداری
+// خودش را با consumerProguardFiles می‌آورد، پس چیزی که با reflection صدا زده
+// می‌شود حذف نمی‌شود. هر بار که روشنش می‌کنی، APK release باید تست شود.
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -85,6 +88,26 @@ android {
         versionCode 1
         versionName "1.0"
     }
+    // lintVitalRelease برای هر بیلد release ابزار lint را جداگانه از مخزن گوگل
+    // دانلود می‌کند؛ روی این اتصال ناپایدار است و بیلد را می‌شکند. لینت اندروید
+    // چیزی به خروجی APK اضافه نمی‌کند و بررسی کد خودمان با tsc و eslint انجام می‌شود.
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    // به‌جای یک APK که هر چهار معماری را با خود می‌برد، برای هرکدام یک فایل
+    // جدا. گوشی فقط یکی از این‌ها را لازم دارد؛ APK یکپارچه سه‌چهارم حجمش
+    // کتابخانه‌ی نیتیوی بود که روی آن دستگاه هیچ‌وقت اجرا نمی‌شد.
+    splits {
+        abi {
+            enable true
+            reset()
+            include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+            universalApk false
+        }
+    }
+
     signingConfigs {
         debug {
             storeFile file('debug.keystore')

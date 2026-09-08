@@ -115,6 +115,72 @@ export function jalaliLongDate(date: Date): string {
   return `${JALALI_DAY_WORDS[jd]} ${JALALI_MONTHS[jm - 1]} ${jy}`;
 }
 
+/** سرستون‌های جدول تقویم، از شنبه. */
+export const JALALI_WEEK_HEADERS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+
+/** معکوس {@link toJalali} — همان الگوریتم، برعکس. */
+export function toGregorian(jy: number, jm: number, jd: number): Date {
+  let year = jy + 1595;
+  let days =
+    -355668 +
+    365 * year +
+    Math.floor(year / 33) * 8 +
+    Math.floor(((year % 33) + 3) / 4) +
+    jd +
+    (jm < 7 ? (jm - 1) * 31 : (jm - 7) * 30 + 186);
+
+  let gy = 400 * Math.floor(days / 146097);
+  days %= 146097;
+
+  if (days > 36524) {
+    days -= 1;
+    gy += 100 * Math.floor(days / 36524);
+    days %= 36524;
+    if (days >= 365) days += 1;
+  }
+
+  gy += 4 * Math.floor(days / 1461);
+  days %= 1461;
+
+  if (days > 365) {
+    gy += Math.floor((days - 1) / 365);
+    days = (days - 1) % 365;
+  }
+
+  let gd = days + 1;
+  const isLeap = (gy % 4 === 0 && gy % 100 !== 0) || gy % 400 === 0;
+  const monthLengths = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+  let gm = 0;
+  while (gm < 12 && gd > monthLengths[gm]) {
+    gd -= monthLengths[gm];
+    gm += 1;
+  }
+
+  return new Date(gy, gm, gd);
+}
+
+/**
+ * تعداد روزهای یک ماه شمسی.
+ *
+ * برای اسفند به‌جای فرمول کبیسه، رفت‌وبرگشت می‌زنیم: اگر روز سی‌ام اسفند
+ * بعد از تبدیل به میلادی و برگشت باز هم سی‌ام اسفند بود، ماه ۳۰ روزه است.
+ * این‌طور با همان الگوریتم تبدیل سازگار می‌ماند و فرمول جداگانه‌ای که ممکن است
+ * با آن اختلاف داشته باشد وارد نمی‌کنیم.
+ */
+export function jalaliMonthLength(jy: number, jm: number): number {
+  if (jm <= 6) return 31;
+  if (jm <= 11) return 30;
+
+  const roundTrip = toJalali(toGregorian(jy, 12, 30));
+  return roundTrip.jm === 12 && roundTrip.jd === 30 ? 30 : 29;
+}
+
+/** جایگاه روز در هفته‌ی شمسی: شنبه ۰ تا جمعه ۶. */
+export function jalaliWeekdayIndex(date: Date): number {
+  return (date.getDay() + 1) % 7;
+}
+
 export function weekdayLabel(date: Date): string {
   return JALALI_WEEKDAYS[date.getDay()];
 }

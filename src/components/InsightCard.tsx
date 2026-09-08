@@ -1,11 +1,12 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Insight } from '../types';
 import { colors, radius, spacing } from '../theme';
+import { Text } from './Text';
 
 const TONE_STYLES = {
   positive: { bg: colors.successSoft, accent: colors.success, emoji: '✅' },
-  warning: { bg: colors.warningSoft, accent: colors.warning, emoji: '⚠️' },
+  warning: { bg: colors.expenseSoft, accent: colors.expense, emoji: '⚠️' },
   neutral: { bg: colors.primarySoft, accent: colors.primary, emoji: '💡' },
 } as const;
 

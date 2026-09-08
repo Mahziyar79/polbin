@@ -28,7 +28,7 @@ export function AddTransactionScreen({ navigation }: Props) {
         merchant: form.merchant.trim(),
         categoryId: form.categoryId,
         date: new Date().toISOString(),
-        type: 'debit',
+        type: form.type,
       });
       navigation.navigate('Dashboard');
     } catch {
@@ -43,7 +43,7 @@ export function AddTransactionScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <FormScreenHeader
           title="تراکنش جدید"
-          subtitle="خرجی که پیامکش نیامده را دستی ثبت کن."
+          subtitle="خرج یا درآمدی که پیامکش نیامده را دستی ثبت کن."
         />
         <TransactionFormFields
           form={form}

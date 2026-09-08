@@ -12,7 +12,7 @@ import { createMMKV } from 'react-native-mmkv';
 export const storage = createMMKV({ id: 'polbin' });
 
 export const STORAGE_KEYS = {
-  authUser: 'auth.user.v1',
+  profile: 'profile.v1',
   customCategories: 'categories.custom.v1',
   transactions: 'transactions.v1',
   onboardingSeen: 'onboarding.seen.v1',

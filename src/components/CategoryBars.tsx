@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { CategoryBreakdown } from '../types';
 import { colors, radius, spacing } from '../theme';
 import { formatPercent, formatToman } from '../utils/format';
+import { Text } from './Text';
 
 /** نمودار میله‌ای دسته‌بندی — هر ردیف یک دسته. */
 export function CategoryBars({ data }: { data: CategoryBreakdown[] }) {

@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { colors, spacing } from '../theme';
 import { AppButton } from './AppButton';
+import { Text } from './Text';
 
 interface Props {
   submitTitle: string;

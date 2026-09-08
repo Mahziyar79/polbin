@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- فایل‌های خروجی موقت؛ فقط از طریق FileProvider به بیرون داده می‌شوند -->
+    <cache-path name="exports" path="exports/" />
+</paths>

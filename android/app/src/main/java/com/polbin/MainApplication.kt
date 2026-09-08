@@ -14,8 +14,9 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // add(MyReactNativePackage())
+          // ماژول خودمان برای ذخیره/هم‌رسانی فایل و چاپ — autolink نمی‌شود چون
+          // بخشی از خود پروژه است نه یک بسته‌ی npm.
+          add(PolbinFilesPackage())
         },
     )
   }

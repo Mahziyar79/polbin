@@ -42,6 +42,8 @@ New-Item -ItemType Directory -Force "C:\Users\Mahziyar79\.gradle\javatmp"
 & "E:\android_studio\Android\Sdk\emulator\emulator.exe" -avd Small_Phone
 ```
 
+& "E:\android_studio\Android\Sdk\emulator\emulator.exe" -avd Small_Phone -no-snapshot-load
+
 برای دیدن لیست شبیه‌سازهای موجود:
 
 ```powershell
@@ -115,31 +117,64 @@ Set-Location "D:\personal projects\polbin"; npm start
 
 ---
 
-## بخش ۲ — اجرا روی گوشی واقعی
+## بخش ۲ — نصب روی گوشی واقعی
 
-### قدم ۱: معماری را عوض کن (بدون این، اپ روی گوشی نصب نمی‌شود)
+دو راه هست و برای استفاده‌ی روزمره **راه اول** درست است.
 
-الان پروژه فقط برای `x86_64` بیلد می‌شود که معماری شبیه‌ساز است. گوشی‌های واقعی ARM هستند.
-در [android/gradle.properties](android/gradle.properties) خط `reactNativeArchitectures` را عوض کن:
+### راه اول: APK نسخه‌ی release (بدون کابل، بدون Metro)
 
-```properties
-# برای گوشی واقعی (اکثر گوشی‌های امروزی):
-reactNativeArchitectures=arm64-v8a
+در این نسخه کد جاوااسکریپت داخل خود APK بسته‌بندی می‌شود، پس اپ روی گوشی
+مستقل کار می‌کند — لازم نیست کامپیوتر روشن باشد یا Metro اجرا شود.
 
-# برای نسخه‌ی نهایی کافه‌بازار (همه‌ی گوشی‌ها):
-reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64
+```powershell
+$env:JAVA_TOOL_OPTIONS = "-Djdk.net.unixdomain.tmpdir=C:\Users\Mahziyar79\.gradle\javatmp"; .\android\gradlew.bat -p android assembleRelease
 ```
 
-بعد از این تغییر یک بیلد کامل لازم است (چند دقیقه، چون C++ برای معماری جدید کامپایل می‌شود).
+خروجی **یک فایل نیست، چهار فایل است** — یکی برای هر معماری CPU:
 
-### قدم ۲: روی گوشی، Developer Options را باز کن
+```
+android/app/build/outputs/apk/release/
+  app-arm64-v8a-release.apk     ~22MB  ← گوشی‌های امروزی، همین را بردار
+  app-armeabi-v7a-release.apk   ~17MB     گوشی‌های قدیمی ۳۲ بیتی
+  app-x86-release.apk           ~23MB     شبیه‌ساز
+  app-x86_64-release.apk        ~23MB     شبیه‌ساز
+```
+
+اگر مطمئن نیستی گوشی‌ات کدام است، این را بزن:
+
+```powershell
+& "E:\android_studio\Android\Sdk\platform-tools\adb.exe" shell getprop ro.product.cpu.abi
+```
+
+فایل مربوطه را با کابل، بلوتوث یا هر روشی به گوشی منتقل کن و از فایل‌منیجر گوشی بازش کن.
+اندروید می‌پرسد «نصب از منابع ناشناس» را اجازه می‌دهی؟ — اجازه بده.
+
+یا اگر گوشی با کابل وصل است و `adb` می‌بیندش:
+
+```powershell
+& "E:\android_studio\Android\Sdk\platform-tools\adb.exe" install -r "android\app\build\outputs\apk\release\app-arm64-v8a-release.apk"
+```
+
+> **APK فعلاً با کلید debug امضا می‌شود.** برای نصب روی گوشی خودت کاملاً کافی است،
+> ولی کافه‌بازار قبولش نمی‌کند و دو APK با کلیدهای متفاوت روی هم آپدیت نمی‌شوند —
+> برای آپدیت باید نسخه‌ی قبلی را حذف کنی. ساختن کلید release در [TODO.md](TODO.md) لیست شده است.
+
+> **قبل از هر انتشار، APK release را دستی تست کن.** بیلد debug و release در معماری
+> جدید یکسان رفتار نمی‌کنند؛ یک‌بار کرشی داشتیم که فقط در release ظاهر می‌شد.
+> دلیلش در [TODO.md](TODO.md) نوشته شده.
+
+### راه دوم: نسخه‌ی debug (فقط وقتی می‌خواهی کد را زنده تغییر بدهی)
+
+این نسخه به Metro روی کامپیوتر وصل می‌شود، پس کابل و کامپیوتر باید وصل بمانند.
+
+**۱ — روی گوشی، Developer Options را باز کن**
 
 ۱. **تنظیمات ← درباره‌ی گوشی**
 ۲. روی **شماره‌ی ساخت** (Build number) هفت بار پشت سر هم بزن
 ۳. برگرد به تنظیمات ← **گزینه‌های توسعه‌دهنده** (Developer options) ظاهر شده
 ۴. **اشکال‌زدایی USB** (USB debugging) را روشن کن
 
-### قدم ۳: با کابل وصل کن
+**۲ — با کابل وصل کن**
 
 گوشی را با کابل به کامپیوتر بزن. روی گوشی یک دیالوگ می‌آید که اثر انگشت کامپیوتر را نشان
 می‌دهد — **Allow** را بزن و تیک «همیشه» را بگذار.
@@ -151,7 +186,7 @@ reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64
 باید سریال گوشی را با وضعیت `device` ببینی. اگر `unauthorized` بود، دیالوگ روی گوشی را تایید نکرده‌ای.
 اگر اصلاً چیزی نبود، کابل را عوض کن — خیلی از کابل‌ها فقط شارژ هستند و دیتا رد نمی‌کنند.
 
-### قدم ۴: Metro و پل پورت
+**۳ — Metro و پل پورت**
 
 Metro را روشن کن (مثل قدم ۳ بخش شبیه‌ساز)، بعد پورت ۸۰۸۱ را به گوشی پل بزن:
 
@@ -161,13 +196,13 @@ Metro را روشن کن (مثل قدم ۳ بخش شبیه‌ساز)، بعد پ
 
 این دستور را **بعد از هر بار وصل کردن مجدد کابل** باید تکرار کنی.
 
-### قدم ۵: بیلد و نصب
+**۴ — بیلد و نصب**
 
 ```powershell
-Set-Location "D:\personal projects\polbin\android"; $env:ANDROID_HOME = "E:\android_studio\Android\Sdk"; & .\gradlew.bat app:installDebug -PreactNativeDevServerPort=8081
+$env:ANDROID_HOME = "E:\android_studio\Android\Sdk"; .\android\gradlew.bat -p android app:installDebug -PreactNativeDevServerPort=8081
 ```
 
-### قدم ۶: اجرا
+**۵ — اجرا**
 
 ```powershell
 & "E:\android_studio\Android\Sdk\platform-tools\adb.exe" shell am start -n com.polbin/.MainActivity
@@ -205,11 +240,71 @@ Set-Location "D:\personal projects\polbin\android"; $env:ANDROID_HOME = "E:\andr
 | `Unable to establish loopback connection` | `JAVA_TOOL_OPTIONS` ست نشده | نکته‌ی ۱ بالا |
 | `'gradlew.bat' is not recognized` | `npm run android` زده‌ای | مستقیم `gradlew.bat` را صدا بزن |
 | `Could not find com.android.tools.build:gradle` | VPN خاموش است | VPN را روشن کن |
-| `INSTALL_FAILED_INSUFFICIENT_STORAGE` | حافظه‌ی شبیه‌ساز پر است | Device Manager ← سه‌نقطه ← **Wipe Data** |
+| `INSTALL_FAILED_INSUFFICIENT_STORAGE` | حافظه‌ی شبیه‌ساز پر است | اول اپ را uninstall کن (پایین) |
+| `Requested internal only, but not enough space` | همان بالایی | همان بالایی |
 | `No connected devices!` | شبیه‌ساز/گوشی وصل نیست | `adb devices` را چک کن |
-| صفحه‌ی قرمز `Unable to load script` | Metro خاموش است یا پورت پل نخورده | `npm start` + `adb reverse tcp:8081 tcp:8081` |
+| `Device is OFFLINE` | snapshot شبیه‌ساز خراب شده | بوت سرد (پایین) |
+| `Connection reset by peer` موقع نصب | VPN مسیر شبکه‌ی شبیه‌ساز را گرفته | VPN را قطع کن |
+| صفحه‌ی قرمز `Unable to load script` | پل پورت پاک شده | `adb reverse --list` را چک کن (پایین) |
 | چیدمان چپ‌به‌راست است | اپ بعد از نصب restart نشده | اپ را کامل ببند و باز کن |
 | اپ روی گوشی نصب نمی‌شود | فقط `x86_64` بیلد شده | قدم ۱ بخش گوشی واقعی |
+
+### `Unable to load script` — اول این را چک کن
+
+**قبل از اینکه سراغ Metro بروی**، پل پورت را ببین:
+
+```powershell
+& "E:\android_studio\Android\Sdk\platform-tools\adb.exe" reverse --list
+```
+
+اگر خروجی **خالی** بود، مشکل همین است:
+
+```powershell
+& "E:\android_studio\Android\Sdk\platform-tools\adb.exe" reverse tcp:8081 tcp:8081
+```
+
+بعد اپ را ببند و باز کن.
+
+**چرا پاک می‌شود:** `adb reverse` روی سه حالت از بین می‌رود — بسته و باز شدن شبیه‌ساز،
+ری‌استارت شدن دیمن adb (خود Gradle گاهی این کار را می‌کند)، و جدا شدن کابل گوشی.
+
+**چرا اصلاً لازم است:** اپ روی `debug_http_host = localhost:8081` تنظیم شده تا ترافیک از
+کانال adb برود نه شبکه‌ی مجازی شبیه‌ساز — این کار برای دور زدن تداخل VPN با مسیر
+`10.0.2.2` انجام شد. بدون پل پورت، `localhost` داخل شبیه‌ساز یعنی خود شبیه‌ساز.
+
+### شبیه‌ساز `offline` گیر کرده
+
+بستن و باز کردن معمولی جواب نمی‌دهد چون از همان snapshot خراب بالا می‌آید.
+**بوت سرد** لازم است:
+
+```powershell
+& "E:\android_studio\Android\Sdk\emulator\emulator.exe" -avd Small_Phone -no-snapshot-load
+```
+
+در اندروید استودیو: Device Manager ← سه‌نقطه‌ی دستگاه ← **Cold Boot Now**.
+
+### حافظه‌ی شبیه‌ساز پر شد
+
+APK دیباگ با هر چهار معماری حدود ۱۵۰ مگ است و موقع نصب بیش از دو برابر جا می‌خواهد.
+ساده‌ترین راه، برداشتن نسخه‌ی قبلی است:
+
+```powershell
+& "E:\android_studio\Android\Sdk\platform-tools\adb.exe" uninstall com.polbin
+```
+
+> این کار **داده‌ی محلی اپ را پاک می‌کند** — تراکنش‌ها، دسته‌های دلخواه و وضعیت
+> onboarding از بین می‌روند و اپ مثل نصب تازه بالا می‌آید.
+
+اگر باز هم کم آورد، اپ‌های آزمایشی دیگر را از شبیه‌ساز پاک کن یا Wipe Data بزن.
+
+### VPN و شبیه‌ساز
+
+اگر VPN روشن باشد (مخصوصاً OpenVPN با آداپتور TAP یا sing-box در حالت TUN)، مسیر شبکه‌ی
+بین شبیه‌ساز و کامپیوتر مختل می‌شود. علائمش: باندل روی ۹۹٪ گیر می‌کند، `Connection reset
+by peer` موقع نصب، و offline شدن مکرر شبیه‌ساز.
+
+**موقع کار با شبیه‌ساز VPN را قطع کن.** برای بیلد لازم نیست چون وابستگی‌ها کش شده‌اند —
+فقط وقتی لازم است که پکیج جدیدی از `dl.google.com` بیاید.
 
 ### دستورهای مفید
 

@@ -5,26 +5,35 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
 import { CategoryBars } from '../components/CategoryBars';
+import { DashboardEmptyState } from '../components/DashboardEmptyState';
 import { Fab } from '../components/Fab';
 import { InsightCard } from '../components/InsightCard';
 import { ProportionBar } from '../components/ProportionBar';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { TransactionRow } from '../components/TransactionRow';
 import { RootStackParamList } from '../navigation/types';
-import { buildBreakdown, buildInsights, totalSpend, withinLastDays } from '../services/analytics';
-import { useAuth } from '../state/AuthContext';
+import {
+  balanceOf,
+  buildBreakdown,
+  buildInsights,
+  totalIncome,
+  totalSpend,
+  withinLastDays,
+} from '../services/analytics';
+import { useProfile } from '../state/ProfileContext';
 import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
+import { TransactionType } from '../types';
 import { formatToman, toFaDigits } from '../utils/format';
 import { jalaliLongDate } from '../utils/jalali';
+import { Text } from '../components/Text';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
@@ -34,22 +43,31 @@ const PERIODS = [
   { days: 30, label: '۳۰ روز', summary: 'در ۳۰ روز گذشته' },
 ] as const;
 
+const MODES = [
+  { value: 'debit', label: 'هزینه‌ها', color: colors.expense },
+  { value: 'credit', label: 'درآمدها', color: colors.success },
+] as const;
+
 export function DashboardScreen({ navigation }: Props) {
-  const { user, signOut } = useAuth();
-  const { transactions, loading, error, lastAddedId, reload, takeNextFakeSms } = useTransactions();
+  const { profile } = useProfile();
+  const { transactions, loading, error, lastAddedId, reload, removeTransaction } =
+    useTransactions();
   const { categories } = useCategories();
-  const [periodDays, setPeriodDays] = useState<number>(30);
-  const activePeriod =
-    PERIODS.find(item => item.days === periodDays) ?? PERIODS[PERIODS.length - 1];
+  const [mode, setMode] = useState<TransactionType>('debit');
+  const [periodDays, setPeriodDays] = useState<number>(PERIODS[0].days);
+  const isExpense = mode === 'debit';
+  const activePeriod = PERIODS.find(item => item.days === periodDays) ?? PERIODS[0];
 
   const periodTransactions = useMemo(
     () => withinLastDays(transactions, periodDays),
     [transactions, periodDays],
   );
   const total = useMemo(() => totalSpend(periodTransactions), [periodTransactions]);
+  const income = useMemo(() => totalIncome(periodTransactions), [periodTransactions]);
+  const balance = useMemo(() => balanceOf(periodTransactions), [periodTransactions]);
   const breakdown = useMemo(
-    () => buildBreakdown(periodTransactions, categories),
-    [periodTransactions, categories],
+    () => buildBreakdown(periodTransactions, categories, mode),
+    [periodTransactions, categories, mode],
   );
   const insights = useMemo(
     () => buildInsights(transactions, categories),
@@ -57,15 +75,12 @@ export function DashboardScreen({ navigation }: Props) {
   );
   const recent = useMemo(
     () =>
-      [...transactions]
+      transactions
+        .filter(tx => tx.type === mode)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 8),
-    [transactions],
+    [transactions, mode],
   );
-
-  function handleSimulateSms() {
-    navigation.navigate('ConfirmTransaction', { rawSms: takeNextFakeSms() });
-  }
 
   if (loading) {
     return (
@@ -73,6 +88,19 @@ export function DashboardScreen({ navigation }: Props) {
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (!loading && !error && transactions.length === 0) {
+    return (
+      <ScreenContainer>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <DashboardEmptyState
+            onAddManually={() => navigation.navigate('AddTransaction')}
+            onRestore={() => navigation.navigate('Backup')}
+          />
+        </ScrollView>
       </ScreenContainer>
     );
   }
@@ -95,12 +123,36 @@ export function DashboardScreen({ navigation }: Props) {
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => {}} />}>
         <View style={styles.topBar}>
           <View>
-            <Text style={styles.greeting}>سلام {user?.displayName ?? ''}</Text>
-            <Text style={styles.monthLabel}>{toFaDigits(jalaliLongDate(new Date()))}</Text>
+            <Text style={styles.greeting}>
+              {profile.displayName ? `سلام ${profile.displayName} 👋` : 'سلام 👋'}
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Calendar')}>
+              <Text style={styles.monthLabel}>
+                {toFaDigits(jalaliLongDate(new Date()))}  📅
+              </Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={signOut} style={styles.signOut}>
-            <Text style={styles.signOutText}>خروج</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Backup')}
+            style={styles.topAction}>
+            <Text style={styles.topActionText}>پشتیبان</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.modeTabs}>
+          {MODES.map(option => {
+            const active = option.value === mode;
+            return (
+              <TouchableOpacity
+                key={option.value}
+                onPress={() => setMode(option.value)}
+                style={[styles.modeTab, active ? styles.modeTabActive : null]}>
+                <Text style={[styles.modeText, active ? { color: option.color } : null]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <Card style={styles.summaryCard}>
@@ -120,11 +172,33 @@ export function DashboardScreen({ navigation }: Props) {
             })}
           </View>
 
-          <Text style={styles.summaryLabel}>مجموع خرج</Text>
-          <Text style={styles.summaryAmount}>{formatToman(total)}</Text>
+          <Text style={styles.summaryLabel}>{isExpense ? 'مجموع خرج' : 'مجموع درآمد'}</Text>
+          <Text style={[styles.summaryAmount, isExpense ? styles.summaryExpense : styles.summaryIncome]}>
+            {formatToman(isExpense ? total : income)}
+          </Text>
           <Text style={styles.summaryMeta}>
             {toFaDigits(periodTransactions.length)} تراکنش {activePeriod.summary}
           </Text>
+
+          <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>{isExpense ? 'درآمد' : 'خرج'}</Text>
+              <Text style={[styles.statValue, isExpense ? styles.statIncome : styles.statExpense]}>
+                {formatToman(isExpense ? income : total)}
+              </Text>
+            </View>
+
+            <View style={styles.statDivider} />
+
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>مانده</Text>
+              <Text style={styles.statValue}>
+                {balance < 0 ? '− ' : ''}
+                {formatToman(Math.abs(balance))}
+              </Text>
+             
+            </View>
+          </View>
 
           <View style={styles.proportionWrap}>
             <ProportionBar data={breakdown} />
@@ -141,15 +215,28 @@ export function DashboardScreen({ navigation }: Props) {
         </Card>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>بینش‌ها</Text>
-          {insights.map(insight => (
-            <InsightCard key={insight.id} insight={insight} />
-          ))}
+          <Text style={styles.sectionTitle}>
+            {isExpense ? 'هزینه‌های اخیر' : 'درآمدهای اخیر'}
+          </Text>
+          <Card>
+            {recent.map((tx, index) => (
+              <View key={tx.id}>
+                {index > 0 ? <View style={styles.divider} /> : null}
+                <TransactionRow
+                  tx={tx}
+                  highlighted={tx.id === lastAddedId}
+                  onDelete={removeTransaction}
+                />
+              </View>
+            ))}
+          </Card>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>خرج به تفکیک دسته</Text>
+            <Text style={styles.sectionTitle}>
+              {isExpense ? 'خرج به تفکیک دسته' : 'درآمد به تفکیک دسته'}
+            </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
               <Text style={styles.sectionAction}>مدیریت دسته‌بندی‌ها</Text>
             </TouchableOpacity>
@@ -158,36 +245,31 @@ export function DashboardScreen({ navigation }: Props) {
             {breakdown.length > 0 ? (
               <CategoryBars data={breakdown} />
             ) : (
-              <Text style={styles.emptyText}>در این بازه تراکنشی ثبت نشده است.</Text>
+              <Text style={styles.emptyText}>
+                {isExpense
+                  ? 'در این بازه خرجی ثبت نشده است.'
+                  : 'در این بازه درآمدی ثبت نشده است.'}
+              </Text>
             )}
           </Card>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>تراکنش‌های اخیر</Text>
-          <Card>
-            {recent.map((tx, index) => (
-              <View key={tx.id}>
-                {index > 0 ? <View style={styles.divider} /> : null}
-                <TransactionRow tx={tx} highlighted={tx.id === lastAddedId} />
-              </View>
+        {isExpense ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>بینش‌ها</Text>
+            {insights.map(insight => (
+              <InsightCard key={insight.id} insight={insight} />
             ))}
-          </Card>
-        </View>
+          </View>
+        ) : null}
+
         <Text style={styles.hint}>
-          در نسخه‌ی نهایی، پیامک از طریق «هم‌رسانی» اندروید مستقیم وارد اپ می‌شود.
+          پیامک بانکی را از پیام‌رسان با «هم‌رسانی» به پول‌بین بده تا خودکار ثبت شود.
         </Text>
       </ScrollView>
 
-      {/* آخرین آیتم آرایه نزدیک‌ترین به دکمه است، پس اکشن اصلی را ته لیست می‌گذاریم. */}
       <Fab
         actions={[
-          {
-            key: 'simulate',
-            label: 'شبیه‌سازی پیامک بانکی',
-            emoji: '💬',
-            onPress: handleSimulateSms,
-          },
           {
             key: 'add',
             label: 'افزودن تراکنش',
@@ -207,13 +289,38 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 20, fontWeight: '800', color: colors.text },
   monthLabel: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
-  signOut: {
+  topAction: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceAlt,
   },
-  signOutText: { fontSize: 12, color: colors.textMuted, fontWeight: '700' },
+  topActionText: { fontSize: 12, color: colors.textMuted, fontWeight: '700' },
+  modeTabs: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.lg,
+    padding: 4,
+  },
+  modeTab: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modeTabActive: {
+    backgroundColor: colors.surface,
+    shadowColor: '#12343B',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  modeText: { fontSize: 15, fontWeight: '800', color: colors.textMuted },
+  summaryIncome: { color: colors.success },
+  summaryExpense: { color: colors.expense },
   summaryCard: { gap: spacing.xs },
   periodSwitch: {
     flexDirection: 'row',
@@ -235,6 +342,29 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 13, color: colors.textMuted },
   summaryAmount: { fontSize: 28, fontWeight: '800', color: colors.text },
   summaryMeta: { fontSize: 12, color: colors.textFaint },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  stat: { flex: 1, gap: 2 },
+  statDivider: { width: 1, backgroundColor: colors.border, marginHorizontal: spacing.md },
+  statLabel: { fontSize: 12, color: colors.textMuted },
+  statValue: { fontSize: 15, fontWeight: '800', color: colors.text },
+  statIncome: { color: colors.success },
+  statExpense: { color: colors.expense },
+  /** خط طلایی زیر «مانده» — رنگ طلا برای متن کنتراست کافی ندارد. */
+  balanceAccent: {
+    height: 3,
+    width: 28,
+    borderRadius: radius.pill,
+    backgroundColor: colors.gold,
+    marginTop: 4,
+  },
+  balanceAccentNegative: { backgroundColor: colors.expense },
   proportionWrap: { marginTop: spacing.lg },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.md },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
