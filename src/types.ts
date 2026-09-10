@@ -65,14 +65,3 @@ export interface CategoryBreakdown {
   share: number;
   count: number;
 }
-
-export type InsightTone = 'positive' | 'warning' | 'neutral';
-
-export interface Insight {
-  id: string;
-  tone: InsightTone;
-  title: string;
-  body: string;
-  /** توصیه‌ی عملی و کوتاه */
-  action: string;
-}

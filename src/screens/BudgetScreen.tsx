@@ -9,7 +9,7 @@ import { Text } from '../components/Text';
 import { TextInput } from '../components/TextInput';
 import { normalizeAmountInput } from '../hooks/useTransactionForm';
 import { RootStackParamList } from '../navigation/types';
-import { withinJalaliMonth } from '../services/analytics';
+import { totalSpend, withinJalaliMonth } from '../services/analytics';
 import { useBudget } from '../state/BudgetContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
@@ -36,9 +36,7 @@ export function BudgetScreen({ navigation }: Props) {
   );
 
   const spendOf = (monthsBack: number) =>
-    withinJalaliMonth(transactions, monthsBack)
-      .filter(tx => tx.type === 'debit')
-      .reduce((sum, tx) => sum + tx.amount, 0);
+    totalSpend(withinJalaliMonth(transactions, monthsBack));
 
   const suggested = suggestion([spendOf(1), spendOf(2), spendOf(3)]);
   const amount = Number(toEnDigits(amountText).replace(/[^\d]/g, '')) || 0;

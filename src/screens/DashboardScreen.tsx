@@ -11,11 +11,10 @@ import {
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
 import { CategoryBars } from '../components/CategoryBars';
-import { DashboardEmptyState } from '../components/DashboardEmptyState';
 import { Fab } from '../components/Fab';
-import { InsightCard } from '../components/InsightCard';
 import { ProportionBar } from '../components/ProportionBar';
-import { BudgetCard, spentIn } from '../components/BudgetCard';
+import { AppMenu } from '../components/AppMenu';
+import { BudgetCard } from '../components/BudgetCard';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SmsAutoCard } from '../components/SmsAutoCard';
 import { TransactionRow } from '../components/TransactionRow';
@@ -23,7 +22,6 @@ import { RootStackParamList } from '../navigation/types';
 import {
   balanceOf,
   buildBreakdown,
-  buildInsights,
   totalIncome,
   totalSpend,
   withinJalaliMonth,
@@ -81,6 +79,7 @@ export function DashboardScreen({ navigation }: Props) {
   const { categories } = useCategories();
   const [mode, setMode] = useState<TransactionType>('debit');
   const [periodId, setPeriodId] = useState<PeriodId>(PERIODS[0].id);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { monthly, } = useBudget();
   const isExpense = mode === 'debit';
   const activePeriod = PERIODS.find(item => item.id === periodId) ?? PERIODS[0];
@@ -92,7 +91,7 @@ export function DashboardScreen({ navigation }: Props) {
 
   // بودجه همیشه ماه جاری را می‌سنجد، مستقل از بازه‌ای که کاربر انتخاب کرده.
   const spentThisMonth = useMemo(
-    () => spentIn(withinJalaliMonth(transactions, 0)),
+    () => totalSpend(withinJalaliMonth(transactions, 0)),
     [transactions],
   );
   const total = useMemo(() => totalSpend(periodTransactions), [periodTransactions]);
@@ -101,10 +100,6 @@ export function DashboardScreen({ navigation }: Props) {
   const breakdown = useMemo(
     () => buildBreakdown(periodTransactions, categories, mode),
     [periodTransactions, categories, mode],
-  );
-  const insights = useMemo(
-    () => buildInsights(transactions, categories),
-    [transactions, categories],
   );
   const recent = useMemo(
     () =>
@@ -121,20 +116,6 @@ export function DashboardScreen({ navigation }: Props) {
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </ScreenContainer>
-    );
-  }
-
-  if (!loading && !error && transactions.length === 0) {
-    return (
-      <ScreenContainer>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <SmsAutoCard />
-          <DashboardEmptyState
-            onAddManually={() => navigation.navigate('AddTransaction')}
-            onRestore={() => navigation.navigate('Backup')}
-          />
-        </ScrollView>
       </ScreenContainer>
     );
   }
@@ -166,10 +147,12 @@ export function DashboardScreen({ navigation }: Props) {
               </Text>
             </TouchableOpacity>
           </View>
+          {/* «پشتیبان» به منو منتقل شد؛ این جای خالی حالا در منو را باز می‌کند. */}
           <TouchableOpacity
-            onPress={() => navigation.navigate('Backup')}
-            style={styles.topAction}>
-            <Text style={styles.topActionText}>پشتیبان</Text>
+            onPress={() => setMenuOpen(true)}
+            style={styles.topAction}
+            accessibilityLabel="منو">
+            <Text style={styles.menuIcon}>☰</Text>
           </TouchableOpacity>
         </View>
 
@@ -263,16 +246,22 @@ export function DashboardScreen({ navigation }: Props) {
             {isExpense ? 'هزینه‌های اخیر' : 'درآمدهای اخیر'}
           </Text>
           <Card>
-            {recent.map((tx, index) => (
-              <View key={tx.id}>
-                {index > 0 ? <View style={styles.divider} /> : null}
-                <TransactionRow
-                  tx={tx}
-                  highlighted={tx.id === lastAddedId}
-                  onPress={id => navigation.navigate('EditTransaction', { id })}
-                />
-              </View>
-            ))}
+            {recent.length === 0 ? (
+              <Text style={styles.sectionEmpty}>
+                {isExpense ? 'هنوز خرجی ثبت نشده.' : 'هنوز درآمدی ثبت نشده.'}
+              </Text>
+            ) : (
+              recent.map((tx, index) => (
+                <View key={tx.id}>
+                  {index > 0 ? <View style={styles.divider} /> : null}
+                  <TransactionRow
+                    tx={tx}
+                    highlighted={tx.id === lastAddedId}
+                    onPress={id => navigation.navigate('EditTransaction', { id })}
+                  />
+                </View>
+              ))
+            )}
           </Card>
         </View>
 
@@ -298,15 +287,6 @@ export function DashboardScreen({ navigation }: Props) {
           </Card>
         </View>
 
-        {isExpense ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>بینش‌ها</Text>
-            {insights.map(insight => (
-              <InsightCard key={insight.id} insight={insight} />
-            ))}
-          </View>
-        ) : null}
-
         <Text style={styles.hint}>
           پیامک بانکی را از پیام‌رسان با «هم‌رسانی» به پول‌بین بده تا خودکار ثبت شود.
         </Text>
@@ -322,6 +302,15 @@ export function DashboardScreen({ navigation }: Props) {
           },
         ]}
       />
+
+      <AppMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onSelect={route => {
+          setMenuOpen(false);
+          navigation.navigate(route as 'Calendar');
+        }}
+      />
     </ScreenContainer>
   );
 }
@@ -333,13 +322,17 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 20, fontWeight: '800', color: colors.text },
   monthLabel: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  // اندازه‌ی ثابت، وگرنه با یک آیکون باریک، borderRadius گرد آن را بیضی می‌کرد.
   topAction: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
     backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   topActionText: { fontSize: 12, color: colors.textMuted, fontWeight: '700' },
+  menuIcon: { fontSize: 18, color: colors.text },
   modeTabs: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -415,6 +408,12 @@ const styles = StyleSheet.create({
   legendDot: { width: 9, height: 9, borderRadius: radius.pill },
   legendText: { fontSize: 11, color: colors.textMuted },
   section: { gap: spacing.md },
+  sectionEmpty: {
+    fontSize: 13,
+    color: colors.textFaint,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+  },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionAction: { fontSize: 13, color: colors.primary, fontWeight: '700' },

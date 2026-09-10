@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { colors, spacing } from '../theme';
 import { AppButton } from './AppButton';
 import { Text } from './Text';
@@ -14,7 +15,13 @@ interface Props {
   onCancel?: () => void;
 }
 
-/** نوار پایینی مشترک فرم‌ها: پیام خطا، دکمه‌ی اصلی، لینک انصراف. */
+/**
+ * نوار پایینی مشترک فرم‌ها: پیام خطا، دکمه‌ی اصلی، لینک انصراف.
+ *
+ * با باز شدن کیبورد به‌اندازه‌ی ارتفاعش بالا می‌آید. بدون این، کیبورد رویش
+ * می‌افتاد و کاربر به‌جای دکمه روی کیبورد لمس می‌کرد — چون با edge-to-edge،
+ * اندروید ۱۵ به بعد دیگر پنجره را خودش کوچک نمی‌کند.
+ */
 export function FormFooter({
   submitTitle,
   onSubmit,
@@ -24,8 +31,10 @@ export function FormFooter({
   cancelTitle,
   onCancel,
 }: Props) {
+  const keyboardHeight = useKeyboardHeight();
+
   return (
-    <View style={styles.footer}>
+    <View style={[styles.footer, { marginBottom: keyboardHeight }]}>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <AppButton title={submitTitle} onPress={onSubmit} loading={loading} disabled={disabled} />
       {onCancel ? (

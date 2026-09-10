@@ -26,9 +26,15 @@
 | دسته‌بندی‌ها | `src/screens/CategoriesScreen.tsx` | ساخت و حذف دسته‌ی دلخواه |
 | بودجه | `src/screens/BudgetScreen.tsx` | سقف خرج ماهانه با پیشنهاد بر اساس ماه‌های قبل |
 | تقویم | `src/screens/CalendarScreen.tsx` | تقویم شمسی با تراکنش‌های هر روز |
+| تراکنش‌ها | `src/screens/TransactionsScreen.tsx` | فهرست کامل با فیلتر خرج/درآمد و صفحه‌بندی |
+| بودجه | `src/screens/BudgetScreen.tsx` | سقف خرج ماهانه |
+| درباره‌ی برنامه | `src/screens/AboutScreen.tsx` | قابلیت‌ها و حریم خصوصی |
 | پشتیبان و خروجی | `src/screens/BackupScreen.tsx` | خروجی JSON، بازگردانی از فایل، گزارش PDF |
 
 ناوبری در `src/navigation/RootNavigator.tsx` است: داشبورد در پایه‌ی استک و بقیه modal.
+صفحه‌های فرعی از منوی کشویی بالا سمت چپ باز می‌شوند
+([AppMenu.tsx](src/components/AppMenu.tsx)) که عمداً با `Modal` خود ریاکت‌نیتیو ساخته
+شده نه `@react-navigation/drawer` — آن یکی دو وابستگی نیتیو سنگین می‌آورد.
 
 تراکنش از دو راه وارد می‌شود:
 

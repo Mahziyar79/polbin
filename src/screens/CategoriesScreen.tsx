@@ -32,6 +32,9 @@ export function CategoriesScreen({ navigation }: Props) {
   const [emoji, setEmoji] = useState(CATEGORY_EMOJI_CHOICES[0]);
   const [color, setColor] = useState(CATEGORY_COLOR_CHOICES[0]);
   const [error, setError] = useState<string | null>(null);
+  // فرم ساخت بسته شروع می‌شود تا اول خود لیست دیده شود؛ کسی که آمده
+  // دسته‌هایش را ببیند نباید اول با یک فرم روبه‌رو شود.
+  const [formOpen, setFormOpen] = useState(false);
 
   const visible = categories.filter(category => category.kind === kind);
 
@@ -43,6 +46,7 @@ export function CategoriesScreen({ navigation }: Props) {
     }
     setError(null);
     setLabel('');
+    setFormOpen(false);
   }
 
   function handleDelete(category: Category) {
@@ -72,83 +76,92 @@ export function CategoriesScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <FormScreenHeader
           title="دسته‌بندی‌ها"
-          subtitle="دسته‌ی دلخواه خودت را برای خرج یا درآمد بساز. دسته‌های پیش‌فرض چون پارسر پیامک به آن‌ها تکیه دارد حذف نمی‌شوند."
+          subtitle="همه‌ی دسته‌های خرج و درآمد. دسته‌های پیش‌فرض چون پارسر پیامک به آن‌ها تکیه دارد حذف نمی‌شوند."
         />
 
-        <Card style={styles.card}>
-          <Text style={styles.sectionLabel}>دسته‌ی جدید</Text>
-
-          <View style={styles.kindSwitch}>
-            {KINDS.map(option => {
-              const active = option.value === kind;
-              return (
-                <TouchableOpacity
-                  key={option.value}
-                  onPress={() => setKind(option.value)}
-                  style={[
-                    styles.kindChip,
-                    active ? { backgroundColor: option.tint, borderColor: option.color } : null,
-                  ]}>
-                  <Text style={[styles.kindText, active ? { color: option.color } : null]}>
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <TextInput
-            value={label}
-            onChangeText={setLabel}
-            placeholder="مثلاً اجاره خانه"
-            placeholderTextColor={colors.textFaint}
-            style={styles.input}
-          />
-
-          <Text style={styles.fieldLabel}>آیکون</Text>
-          <View style={styles.optionRow}>
-            {CATEGORY_EMOJI_CHOICES.map(choice => (
+        <View style={styles.kindSwitch}>
+          {KINDS.map(option => {
+            const active = option.value === kind;
+            return (
               <TouchableOpacity
-                key={choice}
-                onPress={() => setEmoji(choice)}
-                style={[styles.emojiOption, choice === emoji ? styles.emojiOptionActive : null]}>
-                <Text style={styles.emojiText}>{choice}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.fieldLabel}>رنگ</Text>
-          <View style={styles.optionRow}>
-            {CATEGORY_COLOR_CHOICES.map(choice => (
-              <TouchableOpacity
-                key={choice}
-                onPress={() => setColor(choice)}
+                key={option.value}
+                onPress={() => setKind(option.value)}
                 style={[
-                  styles.colorOption,
-                  { backgroundColor: choice },
-                  choice === color ? styles.colorOptionActive : null,
-                ]}
-              />
-            ))}
-          </View>
+                  styles.kindChip,
+                  active ? { backgroundColor: option.tint, borderColor: option.color } : null,
+                ]}>
+                <Text style={[styles.kindText, active ? { color: option.color } : null]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-          <View style={styles.previewRow}>
-            <Text style={styles.fieldLabel}>پیش‌نمایش</Text>
-            <View style={[styles.previewChip, { backgroundColor: color + '22', borderColor: color }]}>
-              <Text style={styles.previewText}>
-                {emoji}  {label.trim() || 'نام دسته'}
-              </Text>
+        <View style={styles.listHead}>
+          <Text style={styles.sectionTitle}>
+            {`${kind === 'credit' ? 'دسته‌های درآمد' : 'دسته‌های خرج'} (${toFaDigits(
+              visible.length,
+            )})`}
+          </Text>
+          <TouchableOpacity onPress={() => setFormOpen(open => !open)}>
+            <Text style={styles.addLink}>{formOpen ? 'بستن فرم' : '+ دسته‌ی جدید'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {formOpen ? (
+          <Card style={styles.card}>
+            <Text style={styles.sectionLabel}>دسته‌ی جدید</Text>
+
+            <TextInput
+              value={label}
+              onChangeText={setLabel}
+              placeholder="مثلاً اجاره خانه"
+              placeholderTextColor={colors.textFaint}
+              style={styles.input}
+            />
+
+            <Text style={styles.fieldLabel}>آیکون</Text>
+            <View style={styles.optionRow}>
+              {CATEGORY_EMOJI_CHOICES.map(choice => (
+                <TouchableOpacity
+                  key={choice}
+                  onPress={() => setEmoji(choice)}
+                  style={[styles.emojiOption, choice === emoji ? styles.emojiOptionActive : null]}>
+                  <Text style={styles.emojiText}>{choice}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          </View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+            <Text style={styles.fieldLabel}>رنگ</Text>
+            <View style={styles.optionRow}>
+              {CATEGORY_COLOR_CHOICES.map(choice => (
+                <TouchableOpacity
+                  key={choice}
+                  onPress={() => setColor(choice)}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: choice },
+                    choice === color ? styles.colorOptionActive : null,
+                  ]}
+                />
+              ))}
+            </View>
 
-          <AppButton title="ساختن دسته" onPress={handleAdd} disabled={label.trim().length === 0} />
-        </Card>
+            <View style={styles.previewRow}>
+              <Text style={styles.fieldLabel}>پیش‌نمایش</Text>
+              <View style={[styles.previewChip, { backgroundColor: color + '22', borderColor: color }]}>
+                <Text style={styles.previewText}>
+                  {emoji}  {label.trim() || 'نام دسته'}
+                </Text>
+              </View>
+            </View>
 
-        <Text style={styles.sectionTitle}>
-          {kind === 'credit' ? 'دسته‌های درآمد' : 'دسته‌های خرج'} ({toFaDigits(visible.length)})
-        </Text>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <AppButton title="ساختن دسته" onPress={handleAdd} disabled={label.trim().length === 0} />
+          </Card>
+        ) : null}
 
         <Card>
           {visible.map((category, index) => (
@@ -162,8 +175,9 @@ export function CategoriesScreen({ navigation }: Props) {
                 <View style={styles.rowMiddle}>
                   <Text style={styles.rowLabel}>{category.label}</Text>
                   <Text style={styles.rowMeta}>
-                    {category.isCustom ? 'ساخته‌ی تو' : 'پیش‌فرض'} ·{' '}
-                    {toFaDigits(transactions.filter(tx => tx.categoryId === category.id).length)} تراکنش
+                    {`${category.isCustom ? 'ساخته‌ی تو' : 'پیش‌فرض'}، ${toFaDigits(
+                      transactions.filter(tx => tx.categoryId === category.id).length,
+                    )} تراکنش`}
                   </Text>
                 </View>
 
@@ -200,7 +214,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   kindText: { fontSize: 13, fontWeight: '800', color: colors.textMuted },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
+  sectionTitle: { flex: 1, fontSize: 16, fontWeight: '800', color: colors.text },
+  listHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  addLink: { fontSize: 13, fontWeight: '800', color: colors.primary },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginTop: spacing.sm },
   input: {
     height: 50,

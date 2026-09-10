@@ -5,7 +5,7 @@ import { Card } from '../components/Card';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { TransactionRow } from '../components/TransactionRow';
 import { RootStackParamList } from '../navigation/types';
-import { dayKey, groupByDay } from '../services/analytics';
+import { balanceOf, dayKey, groupByDay } from '../services/analytics';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
 import { Transaction } from '../types';
@@ -67,7 +67,7 @@ export function CalendarScreen({ navigation }: Props) {
   const expenses = selectedTransactions.filter(tx => tx.type === 'debit');
   const incomes = selectedTransactions.filter(tx => tx.type === 'credit');
   /** خالص تغییرات آن روز: مثبت یعنی بیشتر گرفته‌ای تا داده‌ای. */
-  const net = sumOf(incomes) - sumOf(expenses);
+  const net = balanceOf(selectedTransactions);
 
   function shiftMonth(step: number) {
     setVisibleMonth(current => {

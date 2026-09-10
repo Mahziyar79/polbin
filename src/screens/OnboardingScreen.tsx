@@ -2,9 +2,10 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Keyboard, ScrollView, StyleSheet, View } from 'react-native';
 import { AppButton } from '../components/AppButton';
+import { FeatureList } from '../components/FeatureList';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { colors, radius, spacing } from '../theme';
-import { toFaDigits } from '../utils/format';
 import { Text } from '../components/Text';
 import { TextInput } from '../components/TextInput';
 import { RootStackParamList } from '../navigation/types';
@@ -13,23 +14,6 @@ import { useProfile } from '../state/ProfileContext';
 
 const LOGO = require('../public/logos/logo_vertical.png');
 
-const STEPS = [
-  {
-    emoji: '📩',
-    title: 'پیامک بانکی را بفرست',
-    body: 'پیامک تراکنش را از پیام‌رسان گوشی‌ات باز کن و با گزینه‌ی «هم‌رسانی» به پول‌بین بده.',
-  },
-  {
-    emoji: '✅',
-    title: 'با یک لمس تایید کن',
-    body: 'مبلغ، فروشگاه و دسته‌بندی خودکار خوانده می‌شوند. اگر چیزی درست نبود همان‌جا اصلاحش کن.',
-  },
-  {
-    emoji: '📊',
-    title: 'ببین پولت کجا می‌رود',
-    body: 'خرجت به تفکیک دسته، همراه یک توصیه‌ی کوتاه و عملی برای هفته‌ی پیش رو.',
-  },
-];
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
 
@@ -37,6 +21,7 @@ export function OnboardingScreen({ navigation }: Props) {
   const { setDisplayName } = useProfile();
   const [name, setName] = useState('');
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const keyboardHeight = useKeyboardHeight();
 
   // ورودی نام آخرین چیز روی صفحه است و کیبورد رویش می‌افتد.
   //
@@ -69,22 +54,10 @@ export function OnboardingScreen({ navigation }: Props) {
         <Text style={styles.title}>خرجت را بدون دفترچه بفهم</Text>
         <Text style={styles.subtitle}>
           پول‌بین پیامک‌های بانکی‌ات را می‌خواند و به زبان آدمیزاد می‌گوید پولت کجا رفته.
+          این کارها را برایت انجام می‌دهد:
         </Text>
 
-        <View style={styles.steps}>
-          {STEPS.map((step, index) => (
-            <View key={step.title} style={styles.step}>
-              <View style={styles.stepBadge}>
-                <Text style={styles.stepEmoji}>{step.emoji}</Text>
-                <Text style={styles.stepNumber}>{toFaDigits(index + 1)}</Text>
-              </View>
-              <View style={styles.stepText}>
-                <Text style={styles.stepTitle}>{step.title}</Text>
-                <Text style={styles.stepBody}>{step.body}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
+        <FeatureList />
 
         <View style={styles.privacyNote}>
           <Text style={styles.privacyText}>
@@ -109,7 +82,7 @@ export function OnboardingScreen({ navigation }: Props) {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { marginBottom: keyboardHeight }]}>
         <AppButton title="بزن بریم" onPress={done} />
       </View>
     </ScreenContainer>
@@ -139,34 +112,6 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     marginBottom: spacing.lg,
   },
-  steps: { gap: spacing.lg },
-  step: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  stepBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepEmoji: { fontSize: 20 },
-  stepNumber: {
-    position: 'absolute',
-    bottom: -7,
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    overflow: 'hidden',
-  },
-  stepText: { flex: 1, gap: spacing.xs, paddingTop: 2 },
-  stepTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
-  stepBody: { fontSize: 13, color: colors.textMuted, lineHeight: 24 },
   privacyNote: {
     marginTop: spacing.xl,
     padding: spacing.md,

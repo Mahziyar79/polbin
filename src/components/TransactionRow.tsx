@@ -28,8 +28,13 @@ export function TransactionRow({ tx, highlighted, onPress }: Props) {
         <Text style={styles.merchant} numberOfLines={1}>
           {tx.merchant}
         </Text>
+        {/*
+          جداکننده «،» است نه «·»: نقطه‌ی وسط کاراکتر خنثی است و وقتی بین متن
+          فارسی و عدد می‌افتد، الگوریتم دوجهته جابه‌جایش می‌کند —
+          «۶ شهریور» شبیه «۶ ۰ شهریور» دیده می‌شد.
+        */}
         <Text style={styles.meta} numberOfLines={1}>
-          {category.label} · {formatRelativeDay(tx.date)} · {formatTime(tx.date)}
+          {`${category.label}، ${formatRelativeDay(tx.date)}، ${formatTime(tx.date)}`}
         </Text>
       </View>
 

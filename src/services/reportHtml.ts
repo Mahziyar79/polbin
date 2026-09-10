@@ -1,5 +1,6 @@
 import { Category, Transaction } from '../types';
 import { resolveCategory } from '../data/categories';
+import { balanceOf, totalIncome, totalSpend } from './analytics';
 import { formatToman, toFaDigits } from '../utils/format';
 import { jalaliLongDate, toJalali } from '../utils/jalali';
 
@@ -35,10 +36,9 @@ export function buildReportHtml({ transactions, categories, periodLabel }: Repor
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
-  const expenses = sorted.filter(tx => tx.type === 'debit');
-  const incomes = sorted.filter(tx => tx.type === 'credit');
-  const sum = (list: Transaction[]) => list.reduce((total, tx) => total + tx.amount, 0);
-  const net = sum(incomes) - sum(expenses);
+  const spent = totalSpend(sorted);
+  const earned = totalIncome(sorted);
+  const net = balanceOf(sorted);
 
   const rows = sorted
     .map(tx => {
@@ -100,11 +100,11 @@ export function buildReportHtml({ transactions, categories, periodLabel }: Repor
   <div class="totals">
     <div class="card">
       <span>مجموع درآمد</span>
-      <strong class="income">${escapeHtml(formatToman(sum(incomes)))}</strong>
+      <strong class="income">${escapeHtml(formatToman(earned))}</strong>
     </div>
     <div class="card">
       <span>مجموع هزینه</span>
-      <strong class="expense">${escapeHtml(formatToman(sum(expenses)))}</strong>
+      <strong class="expense">${escapeHtml(formatToman(spent))}</strong>
     </div>
     <div class="card">
       <span>مانده</span>
