@@ -32,6 +32,7 @@ export function EditTransactionScreen({ navigation, route }: Props) {
           merchant: transaction.merchant,
           categoryId: transaction.categoryId,
           type: transaction.type,
+          bank: transaction.bank ?? null,
         }
       : undefined,
   );
@@ -60,6 +61,7 @@ export function EditTransactionScreen({ navigation, route }: Props) {
         amount: form.amount,
         merchant: form.merchant.trim(),
         categoryId: form.categoryId,
+        bank: form.bank ?? undefined,
         type: form.type,
       });
       navigation.goBack();

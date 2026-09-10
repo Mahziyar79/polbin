@@ -65,3 +65,24 @@ export interface CategoryBreakdown {
   share: number;
   count: number;
 }
+
+/**
+ * یک برنامه‌ی قسط — نه یک قسط تکی.
+ *
+ * «وام ۳۶ ماهه» یک رکورد است با تکرار ماهانه، نه ۳۶ رکورد جدا: هم فرم ساده‌تر
+ * می‌ماند و هم فایل پشتیبان بی‌خود بزرگ نمی‌شود.
+ */
+export interface Installment {
+  id: string;
+  title: string;
+  /** مبلغ هر قسط به تومان. */
+  amount: number;
+  /** تعداد کل اقساط. */
+  count: number;
+  /** سررسید اولین قسط — ISO 8601. */
+  firstDueDate: string;
+  /** شماره‌ی قسط‌های پرداخت‌شده، از ۱ شروع می‌شود. */
+  paid: number[];
+  bank?: string;
+  categoryId?: CategoryId;
+}

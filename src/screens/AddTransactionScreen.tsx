@@ -27,6 +27,7 @@ export function AddTransactionScreen({ navigation }: Props) {
         amount: form.amount,
         merchant: form.merchant.trim(),
         categoryId: form.categoryId,
+        bank: form.bank ?? undefined,
         date: new Date().toISOString(),
         type: form.type,
       });

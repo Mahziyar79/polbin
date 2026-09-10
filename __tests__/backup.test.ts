@@ -1,5 +1,5 @@
 import { buildBackup, parseBackup } from '../src/services/backup';
-import { Transaction } from '../src/types';
+import { Installment, Transaction } from '../src/types';
 
 const tx: Transaction = {
   id: 'tx_1',
@@ -11,10 +11,20 @@ const tx: Transaction = {
   rawSms: 'بانک رفاه حساب419675840 خرید1,190,000- مانده4,621,300',
 };
 
+const plan: Installment = {
+  id: 'ins_1',
+  title: 'وام مسکن',
+  amount: 3_000_000,
+  count: 36,
+  firstDueDate: '2026-09-01T00:00:00.000Z',
+  paid: [1, 2],
+  bank: 'بانک مسکن',
+};
+
 describe('backup', () => {
   it('متن خام پیامک را از خروجی حذف می‌کند', () => {
     const file = JSON.parse(
-      buildBackup({ transactions: [tx], customCategories: [], monthlyBudget: null }),
+      buildBackup({ transactions: [tx], customCategories: [], monthlyBudget: null, installments: [] }),
     );
 
     expect(file.transactions[0]).not.toHaveProperty('rawSms');
@@ -26,11 +36,59 @@ describe('backup', () => {
       transactions: [tx],
       customCategories: [],
       monthlyBudget: 3_000_000,
+      installments: [],
     });
 
     const result = parseBackup(json);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.contents.monthlyBudget).toBe(3_000_000);
+  });
+
+  it('قسط‌ها را ذخیره و بی‌کم‌وکاست برمی‌گرداند', () => {
+    const json = buildBackup({
+      transactions: [tx],
+      customCategories: [],
+      monthlyBudget: null,
+      installments: [plan],
+    });
+
+    const result = parseBackup(json);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.contents.installments).toEqual([plan]);
+  });
+
+  it('قسط خراب را دور می‌ریزد ولی بقیه‌ی فایل را می‌پذیرد', () => {
+    const json = JSON.stringify({
+      app: 'polbin',
+      version: 3,
+      exportedAt: '2026-09-08T00:00:00.000Z',
+      transactions: [tx],
+      customCategories: [],
+      // تعداد صفر جدول اقساط خالی می‌سازد و بقیه‌ی صفحه را می‌شکند.
+      installments: [plan, { ...plan, id: 'ins_2', count: 0 }],
+    });
+
+    const result = parseBackup(json);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.contents.installments.map(item => item.id)).toEqual(['ins_1']);
+  });
+
+  it('فایل نسخه‌ی ۲ که قسط ندارد هنوز خوانده می‌شود', () => {
+    const old = JSON.stringify({
+      app: 'polbin',
+      version: 2,
+      exportedAt: '2026-09-08T00:00:00.000Z',
+      transactions: [tx],
+      customCategories: [],
+      monthlyBudget: 5_000_000,
+    });
+
+    const result = parseBackup(old);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.contents.installments).toEqual([]);
+      expect(result.contents.monthlyBudget).toBe(5_000_000);
+    }
   });
 
   it('فایل نسخه‌ی ۱ که بودجه ندارد هنوز خوانده می‌شود', () => {

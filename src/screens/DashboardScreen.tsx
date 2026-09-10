@@ -15,6 +15,7 @@ import { Fab } from '../components/Fab';
 import { ProportionBar } from '../components/ProportionBar';
 import { AppMenu } from '../components/AppMenu';
 import { BudgetCard } from '../components/BudgetCard';
+import { InstallmentsCard } from '../components/InstallmentsCard';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SmsAutoCard } from '../components/SmsAutoCard';
 import { TransactionRow } from '../components/TransactionRow';
@@ -28,9 +29,11 @@ import {
   withinLastDays,
 } from '../services/analytics';
 import { useBudget } from '../state/BudgetContext';
+import { useInstallments } from '../state/InstallmentsContext';
 import { useProfile } from '../state/ProfileContext';
 import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
+import { unpaidThisMonth } from '../services/installments';
 import { colors, radius, spacing } from '../theme';
 import { Transaction, TransactionType } from '../types';
 import { formatToman, toFaDigits } from '../utils/format';
@@ -81,6 +84,7 @@ export function DashboardScreen({ navigation }: Props) {
   const [periodId, setPeriodId] = useState<PeriodId>(PERIODS[0].id);
   const [menuOpen, setMenuOpen] = useState(false);
   const { monthly, } = useBudget();
+  const { installments } = useInstallments();
   const isExpense = mode === 'debit';
   const activePeriod = PERIODS.find(item => item.id === periodId) ?? PERIODS[0];
 
@@ -94,6 +98,8 @@ export function DashboardScreen({ navigation }: Props) {
     () => totalSpend(withinJalaliMonth(transactions, 0)),
     [transactions],
   );
+  // قسط‌های پرداخت‌نشده‌ی همین ماه، برای کم شدن از عدد آزادِ بودجه.
+  const committed = useMemo(() => unpaidThisMonth(installments), [installments]);
   const total = useMemo(() => totalSpend(periodTransactions), [periodTransactions]);
   const income = useMemo(() => totalIncome(periodTransactions), [periodTransactions]);
   const balance = useMemo(() => balanceOf(periodTransactions), [periodTransactions]);
@@ -234,11 +240,22 @@ export function DashboardScreen({ navigation }: Props) {
         </Card>
 
         {isExpense ? (
-          <BudgetCard
-            spent={spentThisMonth}
-            monthly={monthly}
-            onPress={() => navigation.navigate('Budget')}
-          />
+          <>
+            <BudgetCard
+              spent={spentThisMonth}
+              monthly={monthly}
+              committed={committed}
+              onPress={() => navigation.navigate('Budget')}
+            />
+            <InstallmentsCard
+              installments={installments}
+              onPress={() =>
+                installments.length === 0
+                  ? navigation.navigate('AddInstallment', {})
+                  : navigation.navigate('Installments')
+              }
+            />
+          </>
         ) : null}
 
         <View style={styles.section}>

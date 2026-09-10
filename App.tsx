@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AppLaunchProps, readInitialSharedText } from './src/services/shareIntent';
 import { BudgetProvider } from './src/state/BudgetContext';
+import { InstallmentsProvider } from './src/state/InstallmentsContext';
 import { ProfileProvider } from './src/state/ProfileContext';
 import { CategoriesProvider } from './src/state/CategoriesContext';
 import { TransactionsProvider } from './src/state/TransactionsContext';
@@ -25,7 +26,9 @@ function App(props: AppLaunchProps) {
         <CategoriesProvider>
           <TransactionsProvider>
             <BudgetProvider>
-              <RootNavigator initialSharedText={initialSharedText} />
+              <InstallmentsProvider>
+                <RootNavigator initialSharedText={initialSharedText} />
+              </InstallmentsProvider>
             </BudgetProvider>
           </TransactionsProvider>
         </CategoriesProvider>

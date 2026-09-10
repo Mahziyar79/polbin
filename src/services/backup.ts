@@ -1,4 +1,4 @@
-import { Category, Transaction } from '../types';
+import { Category, Installment, Transaction } from '../types';
 import { toJalali } from '../utils/jalali';
 
 /**
@@ -8,7 +8,7 @@ import { toJalali } from '../utils/jalali';
  * `parseBackup` باید بداند با نسخه‌های قدیمی چه کند — وگرنه فایل پشتیبانی که
  * کاربر پارسال گرفته، امسال بی‌صدا نادیده گرفته می‌شود.
  */
-const BACKUP_VERSION = 2;
+const BACKUP_VERSION = 3;
 
 export interface BackupFile {
   app: 'polbin';
@@ -18,12 +18,15 @@ export interface BackupFile {
   customCategories: Category[];
   /** از نسخه‌ی ۲ اضافه شد؛ فایل‌های قدیمی‌تر ندارند. */
   monthlyBudget?: number | null;
+  /** از نسخه‌ی ۳ اضافه شد. */
+  installments?: Installment[];
 }
 
 export interface BackupContents {
   transactions: Transaction[];
   customCategories: Category[];
   monthlyBudget: number | null;
+  installments: Installment[];
 }
 
 export function buildBackup(contents: BackupContents): string {
@@ -34,6 +37,7 @@ export function buildBackup(contents: BackupContents): string {
     transactions: contents.transactions.map(stripSensitive),
     customCategories: contents.customCategories,
     monthlyBudget: contents.monthlyBudget,
+    installments: contents.installments,
   };
 
   return JSON.stringify(file, null, 2);
@@ -103,7 +107,12 @@ export function parseBackup(raw: string): ParseResult {
   const transactions = file.transactions.filter(isValidTransaction);
   const customCategories = file.customCategories.filter(isValidCategory);
 
-  if (transactions.length === 0 && customCategories.length === 0) {
+  // قسط‌ها فقط از نسخه‌ی ۳ به بعد هستند؛ نبودنشان خطا نیست.
+  const installments = Array.isArray(file.installments)
+    ? file.installments.filter(isValidInstallment)
+    : [];
+
+  if (transactions.length === 0 && customCategories.length === 0 && installments.length === 0) {
     return { ok: false, error: 'فایل هیچ تراکنش یا دسته‌ی سالمی ندارد.' };
   }
 
@@ -111,7 +120,27 @@ export function parseBackup(raw: string): ParseResult {
   const monthlyBudget =
     typeof file.monthlyBudget === 'number' && file.monthlyBudget > 0 ? file.monthlyBudget : null;
 
-  return { ok: true, contents: { transactions, customCategories, monthlyBudget } };
+  return { ok: true, contents: { transactions, customCategories, monthlyBudget, installments } };
+}
+
+function isValidInstallment(value: unknown): value is Installment {
+  if (typeof value !== 'object' || value === null) return false;
+  const plan = value as Partial<Installment>;
+
+  return (
+    typeof plan.id === 'string' &&
+    typeof plan.title === 'string' &&
+    typeof plan.amount === 'number' &&
+    Number.isFinite(plan.amount) &&
+    plan.amount > 0 &&
+    typeof plan.count === 'number' &&
+    Number.isInteger(plan.count) &&
+    plan.count > 0 &&
+    typeof plan.firstDueDate === 'string' &&
+    !Number.isNaN(new Date(plan.firstDueDate).getTime()) &&
+    Array.isArray(plan.paid) &&
+    plan.paid.every(number => typeof number === 'number')
+  );
 }
 
 function isValidTransaction(value: unknown): value is Transaction {

@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { BANKS, findBank } from '../data/banks';
 import { useCategories } from '../state/CategoriesContext';
 import { TransactionForm } from '../hooks/useTransactionForm';
 import { colors, radius, spacing } from '../theme';
 import { formatToman } from '../utils/format';
+import { BankMark } from './BankMark';
 import { Card } from './Card';
+import { PickerSheet } from './PickerSheet';
 import { Text } from './Text';
 import { TextInput } from './TextInput';
 
@@ -38,6 +41,9 @@ export function TransactionFormFields({
 }: Props) {
   const { categoriesOfKind } = useCategories();
   const categories = categoriesOfKind(form.type);
+
+  const [bankPickerOpen, setBankPickerOpen] = useState(false);
+  const selectedBank = findBank(form.bank);
 
   return (
     <>
@@ -90,6 +96,20 @@ export function TransactionFormFields({
           style={styles.textInput}
         />
 
+        {/* بانک اختیاری است: خیلی خرج‌ها نقدی‌اند و بانکی ندارند. */}
+        <Text style={[styles.fieldLabel, styles.spacedLabel]}>بانک (اختیاری)</Text>
+        <TouchableOpacity onPress={() => setBankPickerOpen(true)} style={styles.bankRow}>
+          {selectedBank ? (
+            <BankMark bank={selectedBank} size={28} />
+          ) : (
+            <View style={styles.bankPlaceholder} />
+          )}
+          <Text style={styles.bankLabel} numberOfLines={1}>
+            {selectedBank ? selectedBank.name : 'انتخاب بانک'}
+          </Text>
+          <Text style={styles.bankChevron}>▾</Text>
+        </TouchableOpacity>
+
         <Text style={[styles.fieldLabel, styles.spacedLabel]}>دسته‌بندی</Text>
         <View style={styles.chips}>
           {categories.map(category => {
@@ -120,6 +140,24 @@ export function TransactionFormFields({
 
         {meta}
       </Card>
+      <PickerSheet
+        visible={bankPickerOpen}
+        title="بانک تراکنش"
+        selectedId={form.bank ?? 'none'}
+        options={[
+          { id: 'none', label: 'بدون بانک' },
+          ...BANKS.map(bank => ({
+            id: bank.name,
+            label: bank.name,
+            leading: <BankMark bank={bank} size={28} />,
+          })),
+        ]}
+        onSelect={id => {
+          form.setBank(id === 'none' ? null : id);
+          setBankPickerOpen(false);
+        }}
+        onClose={() => setBankPickerOpen(false)}
+      />
     </>
   );
 }
@@ -158,6 +196,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
   },
+  bankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  bankPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+  },
+  bankLabel: { flex: 1, fontSize: 14, color: colors.text },
+  bankChevron: { fontSize: 12, color: colors.textMuted },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
     paddingHorizontal: spacing.md,

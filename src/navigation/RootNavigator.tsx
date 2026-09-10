@@ -5,6 +5,7 @@ import {
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useEffect, useRef, useState } from 'react';
+import { AddInstallmentScreen } from '../screens/AddInstallmentScreen';
 import { AddTransactionScreen } from '../screens/AddTransactionScreen';
 import { BackupScreen } from '../screens/BackupScreen';
 import { AboutScreen } from '../screens/AboutScreen';
@@ -14,6 +15,7 @@ import { CategoriesScreen } from '../screens/CategoriesScreen';
 import { ConfirmTransactionScreen } from '../screens/ConfirmTransactionScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { EditTransactionScreen } from '../screens/EditTransactionScreen';
+import { InstallmentsScreen } from '../screens/InstallmentsScreen';
 import { TransactionsScreen } from '../screens/TransactionsScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { subscribeToSharedText } from '../services/shareIntent';
@@ -130,6 +132,16 @@ export function RootNavigator({ initialSharedText }: { initialSharedText?: strin
         <Stack.Screen
           name="Calendar"
           component={CalendarScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="Installments"
+          component={InstallmentsScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="AddInstallment"
+          component={AddInstallmentScreen}
           options={{ animation: 'slide_from_bottom' }}
         />
         <Stack.Screen

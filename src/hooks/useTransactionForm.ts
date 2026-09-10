@@ -14,6 +14,8 @@ export interface TransactionFormValues {
   merchant: string | null;
   categoryId: CategoryId;
   type: TransactionType;
+  /** نام کامل بانک، یا null اگر معلوم نباشد. */
+  bank: string | null;
 }
 
 export interface TransactionForm {
@@ -29,6 +31,9 @@ export interface TransactionForm {
   /** مبلغ عددی به تومان، برگرفته از متن ورودی. */
   amount: number;
   canSave: boolean;
+  /** نام بانک؛ null یعنی انتخاب نشده. */
+  bank: string | null;
+  setBank: (bank: string | null) => void;
   /** پر کردن فرم از بیرون — مثلاً بعد از رسیدن نتیجه‌ی پارس پیامک. */
   setValues: (values: Partial<TransactionFormValues>) => void;
 }
@@ -44,6 +49,7 @@ export function useTransactionForm(initial?: Partial<TransactionFormValues>): Tr
   const [merchant, setMerchant] = useState(initial?.merchant ?? '');
   const [categoryId, setCategoryId] = useState<CategoryId>(initial?.categoryId ?? 'other');
   const [type, setTypeRaw] = useState<TransactionType>(initial?.type ?? 'debit');
+  const [bank, setBank] = useState<string | null>(initial?.bank ?? null);
 
   /**
    * با عوض شدن نوع، دسته هم باید عوض شود؛ وگرنه یک تراکنش درآمدی با دسته‌ی
@@ -65,6 +71,7 @@ export function useTransactionForm(initial?: Partial<TransactionFormValues>): Tr
     if (values.merchant !== undefined) setMerchant(values.merchant ?? '');
     if (values.categoryId !== undefined) setCategoryId(values.categoryId);
     if (values.type !== undefined) setTypeRaw(values.type);
+    if (values.bank !== undefined) setBank(values.bank);
   }, []);
 
   const amount = Number(toEnDigits(amountText).replace(/[^\d]/g, '')) || 0;
@@ -78,6 +85,8 @@ export function useTransactionForm(initial?: Partial<TransactionFormValues>): Tr
     setCategoryId,
     type,
     setType,
+    bank,
+    setBank,
     amount,
     canSave: amount > 0 && merchant.trim().length > 0,
     setValues,

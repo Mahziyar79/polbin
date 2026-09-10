@@ -1,4 +1,5 @@
 import { CategoryId, ParsedSms, TransactionType } from '../types';
+import { BANK_NAMES } from '../data/banks';
 import { toEnDigits } from '../utils/format';
 import { toGregorian, toJalali } from '../utils/jalali';
 
@@ -10,23 +11,10 @@ import { toGregorian, toJalali } from '../utils/jalali';
  * نکته: Hermes از lookbehind پشتیبانی نمی‌کند، پس هیچ‌جا از `(?<=...)` استفاده نشده.
  */
 
-const BANKS = [
-  'بانک ملت',
-  'بانک ملی',
-  'بانک سامان',
-  'بانک تجارت',
-  'بانک صادرات',
-  'بانک پاسارگاد',
-  'بانک پارسیان',
-  'بانک سپه',
-  'بانک رفاه',
-  'بانک آینده',
-  'بلوبانک',
-];
 
 /** برای پاک کردن نام بانک از متن قبل از تشخیص فروشگاه. */
 const BANK_MENTION_RE = new RegExp(
-  BANKS.map(bank => bank.replace('بانک ', 'بانک' + String.raw`\s*`)).join('|'),
+  BANK_NAMES.map(name => name.replace('بانک ', 'بانک' + String.raw`\s*`)).join('|'),
   'g',
 );
 
@@ -228,7 +216,7 @@ export function parseSms(raw: string): ParsedSms {
   // زنجیره‌ای‌اند: «بانک رفاه» نباید فروشگاه رفاه خوانده شود.
   const { merchant, category } = extractMerchant(text.replace(BANK_MENTION_RE, ' '));
 
-  const bank = BANKS.find(b => text.includes(b.replace('بانک ', ''))) ?? null;
+  const bank = BANK_NAMES.find(name => text.includes(name.replace('بانک ', ''))) ?? null;
   const cardMatch = /\*{2,}\s*(\d{4})/.exec(text);
   const type: TransactionType = CREDIT_KEYWORDS.some(k => text.includes(k)) ? 'credit' : 'debit';
 

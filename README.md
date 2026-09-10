@@ -19,19 +19,22 @@
 | صفحه | فایل | کار |
 |---|---|---|
 | معرفی اولیه | `src/screens/OnboardingScreen.tsx` | سه قدم کار با اپ + پرسیدن نام (اختیاری) |
-| داشبورد | `src/screens/DashboardScreen.tsx` | تب هزینه/درآمد، مجموع بازه، نمودار دسته‌ها، تراکنش‌های اخیر، بینش‌ها |
+| داشبورد | `src/screens/DashboardScreen.tsx` | تب هزینه/درآمد، مجموع بازه، نمودار دسته‌ها، تراکنش‌های اخیر، کارت بودجه و قسط |
 | تایید تراکنش | `src/screens/ConfirmTransactionScreen.tsx` | نمایش نتیجه‌ی پارس پیامک، اصلاح مبلغ/فروشگاه/دسته، تایید |
 | افزودن دستی | `src/screens/AddTransactionScreen.tsx` | ثبت خرج یا درآمدی که پیامکش نیامده |
 | ویرایش تراکنش | `src/screens/EditTransactionScreen.tsx` | لمس هر ردیف — اصلاح یا حذف |
 | دسته‌بندی‌ها | `src/screens/CategoriesScreen.tsx` | ساخت و حذف دسته‌ی دلخواه |
 | بودجه | `src/screens/BudgetScreen.tsx` | سقف خرج ماهانه با پیشنهاد بر اساس ماه‌های قبل |
 | تقویم | `src/screens/CalendarScreen.tsx` | تقویم شمسی با تراکنش‌های هر روز |
-| تراکنش‌ها | `src/screens/TransactionsScreen.tsx` | فهرست کامل با فیلتر خرج/درآمد و صفحه‌بندی |
-| بودجه | `src/screens/BudgetScreen.tsx` | سقف خرج ماهانه |
+| تراکنش‌ها | `src/screens/TransactionsScreen.tsx` | فهرست کامل با فیلتر خرج/درآمد، دسته و بانک + صفحه‌بندی |
+| قسط‌ها | `src/screens/InstallmentsScreen.tsx` | وام‌ها و خریدهای قسطی، جدول سررسیدها، علامت زدن پرداخت |
+| افزودن قسط | `src/screens/AddInstallmentScreen.tsx` | عنوان، مبلغ هر قسط، تعداد، اولین سررسید، بانک |
 | درباره‌ی برنامه | `src/screens/AboutScreen.tsx` | قابلیت‌ها و حریم خصوصی |
 | پشتیبان و خروجی | `src/screens/BackupScreen.tsx` | خروجی JSON، بازگردانی از فایل، گزارش PDF |
 
-ناوبری در `src/navigation/RootNavigator.tsx` است: داشبورد در پایه‌ی استک و بقیه modal.
+ناوبری در `src/navigation/RootNavigator.tsx` است: داشبورد در پایه‌ی استک و بقیه با
+`slide_from_bottom` رویش. `presentation: 'modal'` عمداً هیچ‌جا نیست — در بیلد release
+با Fabric کرش می‌کرد؛ شرحش در [TODO.md](TODO.md).
 صفحه‌های فرعی از منوی کشویی بالا سمت چپ باز می‌شوند
 ([AppMenu.tsx](src/components/AppMenu.tsx)) که عمداً با `Modal` خود ریاکت‌نیتیو ساخته
 شده نه `@react-navigation/drawer` — آن یکی دو وابستگی نیتیو سنگین می‌آورد.
@@ -72,10 +75,12 @@ src/
   data/         دسته‌های پیش‌فرض خرج و درآمد + پیامک‌های خام نمونه (فقط برای تست پارسر)
   hooks/        useTransactionForm — حالت مشترک فرم بین دو صفحه
   navigation/   استک اصلی و تایپ پارامترها
-  screens/      هفت صفحه
-  services/     smsParser (regex) · analytics (بینش‌ها) · fakeApi (لایه‌ی جعلی شبکه) · storage (MMKV)
+  screens/      دوازده صفحه
+  services/     smsParser (regex) · analytics (مجموع و تفکیک) · installments (سررسید اقساط)
+                fakeApi (لایه‌ی جعلی شبکه) · storage (MMKV)
                 backup (JSON) · reportHtml (PDF) · deviceFiles (ماژول نیتیو) · shareIntent
   state/        ProfileContext · CategoriesContext · TransactionsContext · BudgetContext
+                InstallmentsContext
   theme/        رنگ، فاصله، شعاع
   utils/        تبدیل تاریخ شمسی و قالب‌بندی اعداد/مبالغ فارسی
 ```
@@ -85,8 +90,8 @@ src/
 - فرم تراکنش یک جا تعریف شده (`TransactionFormFields` + `useTransactionForm`) و هر دو
   صفحه‌ی تایید پیامک و افزودن دستی از همان استفاده می‌کنند. تفاوت‌هایشان با اسلات
   تزریق می‌شود نه با کد تکراری.
-- `smsParser` و `analytics` توابع خالص‌اند و به ری‌اکت وابسته نیستند، پس هم تست‌پذیرند
-  و هم قابل انتقال به بک‌اند.
+- `smsParser`، `analytics` و `installments` توابع خالص‌اند و به ری‌اکت وابسته نیستند،
+  پس هم تست‌پذیرند و هم قابل انتقال به بک‌اند.
 
 ### نقطه‌ی اتصال به بک‌اند
 

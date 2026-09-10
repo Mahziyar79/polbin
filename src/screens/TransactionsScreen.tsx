@@ -1,13 +1,16 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { AppButton } from '../components/AppButton';
+import { BankMark } from '../components/BankMark';
 import { Card } from '../components/Card';
 import { FormScreenHeader } from '../components/FormScreenHeader';
+import { PickerSheet } from '../components/PickerSheet';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Text } from '../components/Text';
 import { TransactionRow } from '../components/TransactionRow';
 import { RootStackParamList } from '../navigation/types';
+import { findBank } from '../data/banks';
 import { balanceOf } from '../services/analytics';
 import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
@@ -28,6 +31,9 @@ type FilterId = (typeof FILTERS)[number]['id'];
 /** هر بار این تعداد ردیف بیشتر نشان داده می‌شود. */
 const PAGE_SIZE = 20;
 
+/** شناسه‌ی گزینه‌ی «همه» در هر دو فهرست انتخاب. */
+const ALL = '__all__';
+
 /**
  * فهرست کامل تراکنش‌ها.
  *
@@ -41,7 +47,8 @@ export function TransactionsScreen({ navigation }: Props) {
 
   const [filter, setFilter] = useState<FilterId>('all');
   const [categoryId, setCategoryId] = useState<CategoryId | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [bankName, setBankName] = useState<string | null>(null);
+  const [openPicker, setOpenPicker] = useState<'category' | 'bank' | null>(null);
   const [shown, setShown] = useState(PAGE_SIZE);
 
   const byType = useMemo(
@@ -70,12 +77,28 @@ export function TransactionsScreen({ navigation }: Props) {
       .sort((a, b) => b.count - a.count);
   }, [byType, resolve]);
 
+  /** فقط بانک‌هایی که تراکنش دارند؛ مثل دسته‌ها، فهرست بلندِ بی‌مصرف نسازیم. */
+  const bankOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tx of byType) {
+      if (tx.bank) counts.set(tx.bank, (counts.get(tx.bank) ?? 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ bank: findBank(name), name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [byType]);
+
   const selected = categoryOptions.find(option => option.category.id === categoryId) ?? null;
+  const selectedBank = bankName ? findBank(bankName) : null;
 
   const filtered = useMemo(() => {
-    const list = categoryId ? byType.filter(tx => tx.categoryId === categoryId) : byType;
+    let list = byType;
+    if (categoryId) list = list.filter(tx => tx.categoryId === categoryId);
+    if (bankName) list = list.filter(tx => tx.bank === bankName);
+
     return [...list].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [byType, categoryId]);
+  }, [byType, categoryId, bankName]);
 
   const total = useMemo(() => balanceOf(filtered), [filtered]);
 
@@ -91,13 +114,20 @@ export function TransactionsScreen({ navigation }: Props) {
   function changeFilter(next: FilterId) {
     setFilter(next);
     setCategoryId(null);
+    setBankName(null);
     setShown(PAGE_SIZE);
   }
 
-  function chooseCategory(next: CategoryId | null) {
-    setCategoryId(next);
+  function chooseCategory(id: string) {
+    setCategoryId(id === ALL ? null : id);
     setShown(PAGE_SIZE);
-    setPickerOpen(false);
+    setOpenPicker(null);
+  }
+
+  function chooseBank(id: string) {
+    setBankName(id === ALL ? null : id);
+    setShown(PAGE_SIZE);
+    setOpenPicker(null);
   }
 
   return (
@@ -129,19 +159,32 @@ export function TransactionsScreen({ navigation }: Props) {
               })}
             </View>
 
-            {categoryOptions.length > 0 ? (
-              <TouchableOpacity
-                onPress={() => setPickerOpen(true)}
-                style={styles.dropdown}
-                accessibilityRole="button">
-                <Text style={styles.dropdownLabel} numberOfLines={1}>
-                  {selected
-                    ? `${selected.category.emoji}  ${selected.category.label}`
-                    : 'همه‌ی دسته‌ها'}
-                </Text>
-                <Text style={styles.dropdownChevron}>▾</Text>
-              </TouchableOpacity>
-            ) : null}
+            <View style={styles.dropdownRow}>
+              {categoryOptions.length > 0 ? (
+                <TouchableOpacity
+                  onPress={() => setOpenPicker('category')}
+                  style={styles.dropdown}
+                  accessibilityRole="button">
+                  <Text style={styles.dropdownLabel} numberOfLines={1}>
+                    {selected ? `${selected.category.emoji}  ${selected.category.label}` : 'همه‌ی دسته‌ها'}
+                  </Text>
+                  <Text style={styles.dropdownChevron}>▾</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {bankOptions.length > 0 ? (
+                <TouchableOpacity
+                  onPress={() => setOpenPicker('bank')}
+                  style={styles.dropdown}
+                  accessibilityRole="button">
+                  {selectedBank ? <BankMark bank={selectedBank} size={20} /> : null}
+                  <Text style={styles.dropdownLabel} numberOfLines={1}>
+                    {selectedBank ? selectedBank.short : 'همه‌ی بانک‌ها'}
+                  </Text>
+                  <Text style={styles.dropdownChevron}>▾</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
 
             <View style={styles.summary}>
               <Text style={styles.summaryCount}>
@@ -188,55 +231,39 @@ export function TransactionsScreen({ navigation }: Props) {
         }
       />
 
-      <Modal
-        visible={pickerOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPickerOpen(false)}
-        statusBarTranslucent>
-        <View style={styles.sheetLayout}>
-          <Pressable
-            style={styles.sheetBackdrop}
-            onPress={() => setPickerOpen(false)}
-            accessibilityLabel="بستن"
-          />
+      <PickerSheet
+        visible={openPicker === 'category'}
+        title="فیلتر دسته"
+        selectedId={categoryId ?? ALL}
+        options={[
+          { id: ALL, label: 'همه‌ی دسته‌ها', leading: <Text style={styles.allEmoji}>🗂️</Text>, trailing: toFaDigits(byType.length) },
+          ...categoryOptions.map(option => ({
+            id: option.category.id,
+            label: option.category.label,
+            leading: <Text style={styles.allEmoji}>{option.category.emoji}</Text>,
+            trailing: toFaDigits(option.count),
+          })),
+        ]}
+        onSelect={chooseCategory}
+        onClose={() => setOpenPicker(null)}
+      />
 
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>فیلتر دسته</Text>
-
-            <ScrollView>
-              <Pressable
-                onPress={() => chooseCategory(null)}
-                style={({ pressed }) => [
-                  styles.option,
-                  pressed ? styles.optionPressed : null,
-                  categoryId === null ? styles.optionActive : null,
-                ]}>
-                <Text style={styles.optionEmoji}>🗂️</Text>
-                <Text style={styles.optionLabel}>همه‌ی دسته‌ها</Text>
-                <Text style={styles.optionCount}>{toFaDigits(byType.length)}</Text>
-              </Pressable>
-
-              {categoryOptions.map(option => (
-                <Pressable
-                  key={option.category.id}
-                  onPress={() => chooseCategory(option.category.id)}
-                  style={({ pressed }) => [
-                    styles.option,
-                    pressed ? styles.optionPressed : null,
-                    categoryId === option.category.id ? styles.optionActive : null,
-                  ]}>
-                  <Text style={styles.optionEmoji}>{option.category.emoji}</Text>
-                  <Text style={styles.optionLabel} numberOfLines={1}>
-                    {option.category.label}
-                  </Text>
-                  <Text style={styles.optionCount}>{toFaDigits(option.count)}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <PickerSheet
+        visible={openPicker === 'bank'}
+        title="فیلتر بانک"
+        selectedId={bankName ?? ALL}
+        options={[
+          { id: ALL, label: 'همه‌ی بانک‌ها', leading: <Text style={styles.allEmoji}>🏦</Text>, trailing: toFaDigits(byType.length) },
+          ...bankOptions.map(option => ({
+            id: option.name,
+            label: option.bank?.name ?? option.name,
+            leading: option.bank ? <BankMark bank={option.bank} size={28} /> : undefined,
+            trailing: toFaDigits(option.count),
+          })),
+        ]}
+        onSelect={chooseBank}
+        onClose={() => setOpenPicker(null)}
+      />
 
       <View style={styles.footer}>
         <AppButton title="بستن" onPress={() => navigation.goBack()} variant="ghost" />
@@ -259,7 +286,10 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary },
   chipText: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
   chipTextActive: { color: '#FFFFFF' },
+  dropdownRow: { flexDirection: 'row', gap: spacing.sm },
+  allEmoji: { fontSize: 18 },
   dropdown: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -273,30 +303,6 @@ const styles = StyleSheet.create({
   dropdownLabel: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.text },
   dropdownChevron: { fontSize: 12, color: colors.textMuted },
 
-  sheetLayout: { flex: 1, justifyContent: 'flex-end' },
-  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(18, 52, 59, 0.45)' },
-  sheet: {
-    maxHeight: '70%',
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  sheetTitle: { fontSize: 15, fontWeight: '800', color: colors.text, marginBottom: spacing.xs },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.md,
-  },
-  optionPressed: { backgroundColor: colors.surfaceAlt },
-  optionActive: { backgroundColor: colors.primarySoft },
-  optionEmoji: { fontSize: 18 },
-  optionLabel: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.text },
-  optionCount: { fontSize: 12, color: colors.textFaint },
 
   summary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   summaryCount: { flex: 1, fontSize: 13, color: colors.textMuted },

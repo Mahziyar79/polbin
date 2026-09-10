@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   transactions: 'transactions.v1',
   onboardingSeen: 'onboarding.seen.v1',
   budget: 'budget.v1',
+  installments: 'installments.v1',
 } as const;
 
 /**

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 import { Text } from './Text';
@@ -9,6 +10,7 @@ const ITEMS: Array<{ route: keyof RootStackParamList; emoji: string; label: stri
   [
     { route: 'Transactions', emoji: '📋', label: 'تراکنش‌ها', hint: 'همه‌ی خرج‌ها و درآمدها' },
     { route: 'Calendar', emoji: '📅', label: 'تقویم', hint: 'خرج هر روز ماه' },
+    { route: 'Installments', emoji: '🧾', label: 'قسط‌ها', hint: 'وام‌ها و سررسیدها' },
     { route: 'Categories', emoji: '🏷️', label: 'دسته‌بندی‌ها', hint: 'دیدن و ساختن دسته' },
     { route: 'Backup', emoji: '💾', label: 'پشتیبان و خروجی', hint: 'فایل JSON و گزارش PDF' },
     { route: 'About', emoji: 'ℹ️', label: 'درباره‌ی پول‌بین', hint: 'قابلیت‌ها و حریم خصوصی' },
@@ -32,6 +34,8 @@ interface Props {
  * اول می‌آید و پنل دوم، تا پنل به لبه‌ی چپ بچسبد.
  */
 export function AppMenu({ visible, onClose, onSelect }: Props) {
+  const insets = useSafeAreaInsets();
+
   return (
     <Modal
       visible={visible}
@@ -48,7 +52,8 @@ export function AppMenu({ visible, onClose, onSelect }: Props) {
             <Text style={styles.tagline}>خرجت را بدون دفترچه بفهم</Text>
           </View>
 
-          <ScrollView contentContainerStyle={styles.items}>
+          <ScrollView
+            contentContainerStyle={[styles.items, { paddingBottom: spacing.md + insets.bottom }]}>
             {ITEMS.map(item => (
               <Pressable
                 key={item.route}

@@ -228,3 +228,29 @@ export function jalaliMonthName(base: Date, monthsBack = 0): string {
 
   return JALALI_MONTHS[month - 1];
 }
+
+/**
+ * `months` ماه شمسی جلو بردن یک تاریخ.
+ *
+ * روز ثابت می‌ماند مگر در ماه مقصد وجود نداشته باشد؛ آن‌وقت به آخرین روز همان
+ * ماه چسبانده می‌شود. بدون این، قسطِ سی‌ویکم مهر در آبانِ سی‌روزه به اول آذر
+ * می‌پرید و سررسیدها یکی‌یکی جلو می‌افتادند.
+ */
+export function addJalaliMonths(base: Date, months: number): Date {
+  const { jy, jm, jd } = toJalali(base);
+
+  const zeroBased = jm - 1 + months;
+  const year = jy + Math.floor(zeroBased / 12);
+  const month = ((zeroBased % 12) + 12) % 12 + 1;
+
+  const day = Math.min(jd, jalaliMonthLength(year, month));
+  const result = toGregorian(year, month, day);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+/** اختلاف روزهای تقویمی — منفی یعنی تاریخ گذشته است. */
+export function daysUntil(target: Date, from = new Date()): number {
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return Math.round((startOf(target) - startOf(from)) / 86_400_000);
+}

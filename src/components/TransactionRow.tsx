@@ -1,9 +1,11 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { findBank } from '../data/banks';
 import { useCategories } from '../state/CategoriesContext';
 import { Transaction } from '../types';
 import { colors, radius, spacing } from '../theme';
 import { formatRelativeDay, formatTime, formatToman } from '../utils/format';
+import { BankMark } from './BankMark';
 import { Text } from './Text';
 
 interface Props {
@@ -17,6 +19,7 @@ interface Props {
 export function TransactionRow({ tx, highlighted, onPress }: Props) {
   const { resolve } = useCategories();
   const category = resolve(tx.categoryId, tx.type);
+  const bank = findBank(tx.bank);
 
   const content = (
     <View style={[styles.row, highlighted ? styles.highlighted : null]}>
@@ -38,9 +41,12 @@ export function TransactionRow({ tx, highlighted, onPress }: Props) {
         </Text>
       </View>
 
-      <Text style={[styles.amount, tx.type === 'credit' ? styles.credit : styles.debit]}>
-        {tx.type === 'credit' ? '+' : '−'} {formatToman(tx.amount, false)}
-      </Text>
+      <View style={styles.trailing}>
+        <Text style={[styles.amount, tx.type === 'credit' ? styles.credit : styles.debit]}>
+          {tx.type === 'credit' ? '+' : '−'} {formatToman(tx.amount, false)}
+        </Text>
+        {bank ? <BankMark bank={bank} size={22} /> : null}
+      </View>
     </View>
   );
 
@@ -76,6 +82,7 @@ const styles = StyleSheet.create({
   middle: { flex: 1, gap: 2 },
   merchant: { fontSize: 15, fontWeight: '700', color: colors.text },
   meta: { fontSize: 12, color: colors.textFaint },
+  trailing: { alignItems: 'center', gap: spacing.xs },
   amount: { fontSize: 14, fontWeight: '800' },
   debit: { color: colors.text },
   credit: { color: colors.success },

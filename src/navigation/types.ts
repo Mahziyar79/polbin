@@ -9,5 +9,7 @@ export type RootStackParamList = {
   Budget: undefined;
   Categories: undefined;
   Calendar: undefined;
+  Installments: undefined;
+  AddInstallment: { id?: string };
   Backup: undefined;
 };

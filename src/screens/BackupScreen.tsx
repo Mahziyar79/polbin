@@ -11,6 +11,7 @@ import { backupFileName, buildBackup, parseBackup } from '../services/backup';
 import { isAvailable, pickTextFile, printHtml, saveAndShare } from '../services/deviceFiles';
 import { buildReportHtml } from '../services/reportHtml';
 import { useBudget } from '../state/BudgetContext';
+import { useInstallments } from '../state/InstallmentsContext';
 import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
@@ -22,6 +23,7 @@ export function BackupScreen({ navigation }: Props) {
   const { transactions, replaceAll } = useTransactions();
   const { categories, customCategories, replaceCustom } = useCategories();
   const { monthly, setMonthly, clear: clearBudget } = useBudget();
+  const { installments, replaceAll: replaceInstallments } = useInstallments();
 
   const [busy, setBusy] = useState<'export' | 'import' | 'pdf' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -40,7 +42,12 @@ export function BackupScreen({ navigation }: Props) {
 
   const handleExport = () =>
     run('export', async () => {
-      const json = buildBackup({ transactions, customCategories, monthlyBudget: monthly });
+      const json = buildBackup({
+        transactions,
+        customCategories,
+        monthlyBudget: monthly,
+        installments,
+      });
       await saveAndShare(backupFileName(), 'application/json', json);
     });
 
@@ -72,7 +79,9 @@ export function BackupScreen({ navigation }: Props) {
         'بازگردانی پشتیبان',
         `${toFaDigits(contents.transactions.length)} تراکنش و ${toFaDigits(
           contents.customCategories.length,
-        )} دسته در فایل هست.\n\nداده‌ی فعلی روی گوشی جایگزین می‌شود و برنمی‌گردد.`,
+        )} دسته و ${toFaDigits(
+          contents.installments.length,
+        )} قسط در فایل هست.\n\nداده‌ی فعلی روی گوشی جایگزین می‌شود و برنمی‌گردد.`,
         [
           { text: 'انصراف', style: 'cancel' },
           {
@@ -81,6 +90,7 @@ export function BackupScreen({ navigation }: Props) {
             onPress: () => {
               replaceCustom(contents.customCategories);
               replaceAll(contents.transactions);
+              replaceInstallments(contents.installments);
               if (contents.monthlyBudget === null) {
                 clearBudget();
               } else {

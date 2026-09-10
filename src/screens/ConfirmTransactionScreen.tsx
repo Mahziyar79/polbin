@@ -39,6 +39,7 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         merchant: result.merchant,
         categoryId: result.categoryId,
         type: result.type,
+        bank: result.bank,
       });
     });
     return () => {
@@ -56,7 +57,7 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         merchant: form.merchant.trim(),
         categoryId: form.categoryId,
         date: parsed.date,
-        bank: parsed.bank ?? undefined,
+        bank: form.bank ?? undefined,
         cardLast4: parsed.cardLast4 ?? undefined,
         type: form.type,
         rawSms,

@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { AppButton } from '../components/AppButton';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { Card } from '../components/Card';
 import { FormScreenHeader } from '../components/FormScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -27,6 +28,7 @@ export function CategoriesScreen({ navigation }: Props) {
 
   const [kind, setKind] = useState<TransactionType>('debit');
   const { transactions, reassignCategory } = useTransactions();
+  const keyboardHeight = useKeyboardHeight();
 
   const [label, setLabel] = useState('');
   const [emoji, setEmoji] = useState(CATEGORY_EMOJI_CHOICES[0]);
@@ -192,7 +194,8 @@ export function CategoriesScreen({ navigation }: Props) {
         </Card>
       </ScrollView>
 
-      <View style={styles.footer}>
+      {/* مثل FormFooter بالا می‌آید — این صفحه ورودی نام دسته دارد. */}
+      <View style={[styles.footer, { marginBottom: keyboardHeight }]}>
         <AppButton title="بستن" onPress={() => navigation.goBack()} variant="secondary" />
       </View>
     </ScreenContainer>

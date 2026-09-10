@@ -11,6 +11,8 @@ interface Props {
   spent: number;
   /** سقف ماهانه؛ null یعنی هنوز گذاشته نشده. */
   monthly: number | null;
+  /** قسط‌های پرداخت‌نشده‌ی همین ماه — از باقی‌مانده کنار گذاشته می‌شود. */
+  committed?: number;
   onPress: () => void;
 }
 
@@ -30,9 +32,16 @@ function toneFor(ratio: number) {
  * در استایل جدید نیست و هرگز ریست نمی‌شد) و نام ماه از تیتر می‌افتاد.
  * با دو کامپوننت متفاوت، React مجبور است حالت قبلی را unmount کند.
  */
-export function BudgetCard({ spent, monthly, onPress }: Props) {
+export function BudgetCard({ spent, monthly, committed = 0, onPress }: Props) {
   if (monthly === null) return <BudgetEmptyCard onPress={onPress} />;
-  return <BudgetProgressCard spent={spent} monthly={monthly} onPress={onPress} />;
+  return (
+    <BudgetProgressCard
+      spent={spent}
+      monthly={monthly}
+      committed={committed}
+      onPress={onPress}
+    />
+  );
 }
 
 function BudgetEmptyCard({ onPress }: { onPress: () => void }) {
@@ -60,10 +69,12 @@ function BudgetEmptyCard({ onPress }: { onPress: () => void }) {
 function BudgetProgressCard({
   spent,
   monthly,
+  committed,
   onPress,
 }: {
   spent: number;
   monthly: number;
+  committed: number;
   onPress: () => void;
 }) {
   const monthLabel = jalaliMonthName(new Date());
@@ -71,6 +82,11 @@ function BudgetProgressCard({
   const remaining = monthly - spent;
   const daysLeft = daysLeftInJalaliMonth();
   const tone = toneFor(ratio);
+
+  // قسط‌های این ماه هنوز خرج نشده‌اند ولی قابل خرج کردن هم نیستند. «روزی چقدر»
+  // باید از پولی حساب شود که واقعاً آزاد است، وگرنه عددی می‌دهد که کاربر با
+  // اعتماد به آن خرج می‌کند و آخر ماه قسطش می‌ماند.
+  const free = remaining - committed;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
@@ -113,9 +129,18 @@ function BudgetProgressCard({
             <Text style={styles.hint}>
               {`${formatTomanShort(remaining)} برای ${toFaDigits(daysLeft)} روز باقی‌مانده`}
             </Text>
-            <Text style={styles.hint}>
-              {`یعنی روزی ${formatTomanShort(Math.floor(remaining / daysLeft))}`}
-            </Text>
+            {committed > 0 ? (
+              <Text style={styles.hint}>
+                {`از این مبلغ ${formatTomanShort(committed)} قسط این ماه است`}
+              </Text>
+            ) : null}
+            {free > 0 ? (
+              <Text style={styles.hint}>
+                {`یعنی روزی ${formatTomanShort(Math.floor(free / daysLeft))}`}
+              </Text>
+            ) : (
+              <Text style={styles.over}>قسط‌های این ماه از باقی‌مانده‌ات بیشتر است</Text>
+            )}
           </>
         ) : (
           <Text style={styles.over}>
