@@ -15,7 +15,9 @@ import { DashboardEmptyState } from '../components/DashboardEmptyState';
 import { Fab } from '../components/Fab';
 import { InsightCard } from '../components/InsightCard';
 import { ProportionBar } from '../components/ProportionBar';
+import { BudgetCard, spentIn } from '../components/BudgetCard';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { SmsAutoCard } from '../components/SmsAutoCard';
 import { TransactionRow } from '../components/TransactionRow';
 import { RootStackParamList } from '../navigation/types';
 import {
@@ -24,24 +26,49 @@ import {
   buildInsights,
   totalIncome,
   totalSpend,
+  withinJalaliMonth,
   withinLastDays,
 } from '../services/analytics';
+import { useBudget } from '../state/BudgetContext';
 import { useProfile } from '../state/ProfileContext';
 import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
-import { TransactionType } from '../types';
+import { Transaction, TransactionType } from '../types';
 import { formatToman, toFaDigits } from '../utils/format';
 import { jalaliLongDate } from '../utils/jalali';
 import { Text } from '../components/Text';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
+/**
+ * «۳۰ روز گذشته» جای خود را به ماه شمسی داد.
+ *
+ * پنجره‌ی غلتان با هیچ چیزی در ذهن کاربر جور درنمی‌آید: کسی نمی‌پرسد «۳۰ روز
+ * اخیر چقدر خرج کردم»، می‌پرسد «شهریور چقدر خرج کردم». بودجه هم ماهانه است،
+ * پس هر دو روی یک تقویم می‌نشینند.
+ */
 const PERIODS = [
-  { days: 1, label: 'امروز', summary: 'امروز' },
-  { days: 7, label: '۷ روز', summary: 'در ۷ روز گذشته' },
-  { days: 30, label: '۳۰ روز', summary: 'در ۳۰ روز گذشته' },
+  { id: 'today', label: 'امروز', summary: 'امروز' },
+  { id: 'week', label: '۷ روز', summary: 'در ۷ روز گذشته' },
+  { id: 'month', label: 'این ماه', summary: 'در این ماه' },
+  { id: 'lastMonth', label: 'ماه قبل', summary: 'در ماه قبل' },
 ] as const;
+
+type PeriodId = (typeof PERIODS)[number]['id'];
+
+function transactionsInPeriod(transactions: Transaction[], period: PeriodId): Transaction[] {
+  switch (period) {
+    case 'today':
+      return withinLastDays(transactions, 1);
+    case 'week':
+      return withinLastDays(transactions, 7);
+    case 'month':
+      return withinJalaliMonth(transactions, 0);
+    case 'lastMonth':
+      return withinJalaliMonth(transactions, 1);
+  }
+}
 
 const MODES = [
   { value: 'debit', label: 'هزینه‌ها', color: colors.expense },
@@ -50,17 +77,23 @@ const MODES = [
 
 export function DashboardScreen({ navigation }: Props) {
   const { profile } = useProfile();
-  const { transactions, loading, error, lastAddedId, reload, removeTransaction } =
-    useTransactions();
+  const { transactions, loading, error, lastAddedId, reload } = useTransactions();
   const { categories } = useCategories();
   const [mode, setMode] = useState<TransactionType>('debit');
-  const [periodDays, setPeriodDays] = useState<number>(PERIODS[0].days);
+  const [periodId, setPeriodId] = useState<PeriodId>(PERIODS[0].id);
+  const { monthly, } = useBudget();
   const isExpense = mode === 'debit';
-  const activePeriod = PERIODS.find(item => item.days === periodDays) ?? PERIODS[0];
+  const activePeriod = PERIODS.find(item => item.id === periodId) ?? PERIODS[0];
 
   const periodTransactions = useMemo(
-    () => withinLastDays(transactions, periodDays),
-    [transactions, periodDays],
+    () => transactionsInPeriod(transactions, periodId),
+    [transactions, periodId],
+  );
+
+  // بودجه همیشه ماه جاری را می‌سنجد، مستقل از بازه‌ای که کاربر انتخاب کرده.
+  const spentThisMonth = useMemo(
+    () => spentIn(withinJalaliMonth(transactions, 0)),
+    [transactions],
   );
   const total = useMemo(() => totalSpend(periodTransactions), [periodTransactions]);
   const income = useMemo(() => totalIncome(periodTransactions), [periodTransactions]);
@@ -96,6 +129,7 @@ export function DashboardScreen({ navigation }: Props) {
     return (
       <ScreenContainer>
         <ScrollView showsVerticalScrollIndicator={false}>
+          <SmsAutoCard />
           <DashboardEmptyState
             onAddManually={() => navigation.navigate('AddTransaction')}
             onRestore={() => navigation.navigate('Backup')}
@@ -139,6 +173,8 @@ export function DashboardScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
+        <SmsAutoCard />
+
         <View style={styles.modeTabs}>
           {MODES.map(option => {
             const active = option.value === mode;
@@ -158,11 +194,11 @@ export function DashboardScreen({ navigation }: Props) {
         <Card style={styles.summaryCard}>
           <View style={styles.periodSwitch}>
             {PERIODS.map(period => {
-              const active = period.days === periodDays;
+              const active = period.id === periodId;
               return (
                 <TouchableOpacity
-                  key={period.days}
-                  onPress={() => setPeriodDays(period.days)}
+                  key={period.id}
+                  onPress={() => setPeriodId(period.id)}
                   style={[styles.periodChip, active ? styles.periodChipActive : null]}>
                   <Text style={[styles.periodText, active ? styles.periodTextActive : null]}>
                     {period.label}
@@ -214,6 +250,14 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
         </Card>
 
+        {isExpense ? (
+          <BudgetCard
+            spent={spentThisMonth}
+            monthly={monthly}
+            onPress={() => navigation.navigate('Budget')}
+          />
+        ) : null}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             {isExpense ? 'هزینه‌های اخیر' : 'درآمدهای اخیر'}
@@ -225,7 +269,7 @@ export function DashboardScreen({ navigation }: Props) {
                 <TransactionRow
                   tx={tx}
                   highlighted={tx.id === lastAddedId}
-                  onDelete={removeTransaction}
+                  onPress={id => navigation.navigate('EditTransaction', { id })}
                 />
               </View>
             ))}

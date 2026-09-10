@@ -115,15 +115,37 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+
+        // کلید واقعی انتشار.
+        //
+        // مقدارها از ~/.gradle/gradle.properties خوانده می‌شوند، نه از این فایل:
+        // رمز کلید هرگز نباید داخل مخزن گیت برود. اگر تنظیم نشده باشند، این
+        // پیکربندی خالی می‌ماند و بیلد release به کلید debug برمی‌گردد.
+        release {
+            if (project.hasProperty('POLBIN_STORE_FILE')) {
+                storeFile file(POLBIN_STORE_FILE)
+                storePassword POLBIN_STORE_PASSWORD
+                keyAlias POLBIN_KEY_ALIAS
+                keyPassword POLBIN_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // بدون کلید واقعی، بیلد نمی‌شکند ولی خروجی برای انتشار بی‌مصرف است.
+            // هشدار بالای بیلد چاپ می‌شود تا کسی ندانسته نسخه‌ی debug-signed نفرستد.
+            if (project.hasProperty('POLBIN_STORE_FILE')) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn(
+                    'polbin: POLBIN_STORE_FILE تنظیم نشده — نسخه‌ی release با کلید debug ' +
+                    'امضا می‌شود. برای انتشار قابل استفاده نیست. راهنما در RUN.md'
+                )
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
@@ -131,6 +153,10 @@ android {
 }
 
 dependencies {
+    // تست‌های JVM برای منطق خالصِ کاتلین (SmsFilter) — بدون شبیه‌ساز اجرا می‌شوند:
+    //   ./android/gradlew.bat -p android :app:testDebugUnitTest
+    testImplementation("junit:junit:4.13.2")
+
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 

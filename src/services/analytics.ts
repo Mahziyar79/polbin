@@ -7,6 +7,7 @@ import {
   TransactionType,
 } from '../types';
 import { formatTomanShort, toFaDigits } from '../utils/format';
+import { jalaliMonthRange } from '../utils/jalali';
 
 /**
  * ابتدای روزی که `daysAgo` روز قبل از امروز است.
@@ -25,6 +26,18 @@ function startOfDay(daysAgo: number): number {
 export function withinLastDays(transactions: Transaction[], days: number): Transaction[] {
   const threshold = startOfDay(days - 1);
   return transactions.filter(t => new Date(t.date).getTime() >= threshold);
+}
+
+/** تراکنش‌های یک ماه شمسی. `monthsBack = 0` ماه جاری. */
+export function withinJalaliMonth(transactions: Transaction[], monthsBack = 0): Transaction[] {
+  const { start, end } = jalaliMonthRange(new Date(), monthsBack);
+  const from = start.getTime();
+  const to = end.getTime();
+
+  return transactions.filter(tx => {
+    const time = new Date(tx.date).getTime();
+    return time >= from && time < to;
+  });
 }
 
 /** کلید روز تقویمی محلی — برای گروه‌بندی تراکنش‌ها بر اساس روز. */

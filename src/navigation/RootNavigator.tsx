@@ -7,10 +7,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useEffect, useRef, useState } from 'react';
 import { AddTransactionScreen } from '../screens/AddTransactionScreen';
 import { BackupScreen } from '../screens/BackupScreen';
+import { BudgetScreen } from '../screens/BudgetScreen';
 import { CalendarScreen } from '../screens/CalendarScreen';
 import { CategoriesScreen } from '../screens/CategoriesScreen';
 import { ConfirmTransactionScreen } from '../screens/ConfirmTransactionScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
+import { EditTransactionScreen } from '../screens/EditTransactionScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { subscribeToSharedText } from '../services/shareIntent';
 import { readJSON, STORAGE_KEYS } from '../services/storage';
@@ -96,6 +98,16 @@ export function RootNavigator({ initialSharedText }: { initialSharedText?: strin
         <Stack.Screen
           name="AddTransaction"
           component={AddTransactionScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="EditTransaction"
+          component={EditTransactionScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="Budget"
+          component={BudgetScreen}
           options={{ animation: 'slide_from_bottom' }}
         />
         <Stack.Screen

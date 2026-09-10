@@ -8,6 +8,7 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AppLaunchProps, readInitialSharedText } from './src/services/shareIntent';
+import { BudgetProvider } from './src/state/BudgetContext';
 import { ProfileProvider } from './src/state/ProfileContext';
 import { CategoriesProvider } from './src/state/CategoriesContext';
 import { TransactionsProvider } from './src/state/TransactionsContext';
@@ -23,7 +24,9 @@ function App(props: AppLaunchProps) {
       <ProfileProvider>
         <CategoriesProvider>
           <TransactionsProvider>
-            <RootNavigator initialSharedText={initialSharedText} />
+            <BudgetProvider>
+              <RootNavigator initialSharedText={initialSharedText} />
+            </BudgetProvider>
           </TransactionsProvider>
         </CategoriesProvider>
       </ProfileProvider>

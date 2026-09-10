@@ -8,7 +8,7 @@ import { toJalali } from '../utils/jalali';
  * `parseBackup` باید بداند با نسخه‌های قدیمی چه کند — وگرنه فایل پشتیبانی که
  * کاربر پارسال گرفته، امسال بی‌صدا نادیده گرفته می‌شود.
  */
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
 export interface BackupFile {
   app: 'polbin';
@@ -16,11 +16,14 @@ export interface BackupFile {
   exportedAt: string;
   transactions: Transaction[];
   customCategories: Category[];
+  /** از نسخه‌ی ۲ اضافه شد؛ فایل‌های قدیمی‌تر ندارند. */
+  monthlyBudget?: number | null;
 }
 
 export interface BackupContents {
   transactions: Transaction[];
   customCategories: Category[];
+  monthlyBudget: number | null;
 }
 
 export function buildBackup(contents: BackupContents): string {
@@ -30,6 +33,7 @@ export function buildBackup(contents: BackupContents): string {
     exportedAt: new Date().toISOString(),
     transactions: contents.transactions.map(stripSensitive),
     customCategories: contents.customCategories,
+    monthlyBudget: contents.monthlyBudget,
   };
 
   return JSON.stringify(file, null, 2);
@@ -103,7 +107,11 @@ export function parseBackup(raw: string): ParseResult {
     return { ok: false, error: 'فایل هیچ تراکنش یا دسته‌ی سالمی ندارد.' };
   }
 
-  return { ok: true, contents: { transactions, customCategories } };
+  // فایل نسخه‌ی ۱ اصلاً بودجه ندارد؛ نبودنش خطا نیست.
+  const monthlyBudget =
+    typeof file.monthlyBudget === 'number' && file.monthlyBudget > 0 ? file.monthlyBudget : null;
+
+  return { ok: true, contents: { transactions, customCategories, monthlyBudget } };
 }
 
 function isValidTransaction(value: unknown): value is Transaction {

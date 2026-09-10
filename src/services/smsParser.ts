@@ -1,5 +1,6 @@
 import { CategoryId, ParsedSms, TransactionType } from '../types';
 import { toEnDigits } from '../utils/format';
+import { toGregorian, toJalali } from '../utils/jalali';
 
 /**
  * پارسر محلیِ پیامک بانکی — نسخه‌ی آینه‌ایِ همان regexهایی که قرار است
@@ -22,6 +23,12 @@ const BANKS = [
   'بانک آینده',
   'بلوبانک',
 ];
+
+/** برای پاک کردن نام بانک از متن قبل از تشخیص فروشگاه. */
+const BANK_MENTION_RE = new RegExp(
+  BANKS.map(bank => bank.replace('بانک ', 'بانک' + String.raw`\s*`)).join('|'),
+  'g',
+);
 
 const CREDIT_KEYWORDS = ['واریز', 'دریافت', 'بستانکار', 'حقوق', 'پاداش', 'عودت', 'برگشت وجه'];
 
@@ -60,9 +67,28 @@ interface AmountMatch {
   value: number;
   currency: 'rial' | 'toman';
   isBalance: boolean;
+  /** بلافاصله بعد از کلیدواژه‌ی تراکنش آمده — قوی‌ترین نشانه‌ی مبلغ اصلی. */
+  labelled: boolean;
+  /** جداکننده‌ی هزارگان دارد؛ شماره‌ها معمولاً ندارند. */
+  grouped: boolean;
 }
 
 const AMOUNT_RE = /(\d[\d,]{2,})\s*(ریال|تومان)?/g;
+
+/** «مانده»، «موجودی» و «مانده حساب» — عددی که خرج نیست. */
+const BALANCE_LABEL = /(?:مانده|موجودی)(?:\s*حساب)?$/;
+
+/**
+ * شناسه‌هایی که عدد بعدشان اصلاً مبلغ نیست.
+ *
+ * پیامک بعضی بانک‌ها شماره‌ی حساب را بدون فاصله می‌چسباند («حساب419675840»)
+ * و چون جداکننده‌ی هزارگان هم ندارد، از دید regex از خود مبلغ قابل تشخیص نیست.
+ */
+const IDENTIFIER_LABEL = /(?:حساب|سپرده|شبا|کارت|شماره|مشتری|پیگیری|مرجع|سریال)$/;
+
+/** کلیدواژه‌هایی که عدد بعدشان مبلغ تراکنش است. */
+const SPEND_LABEL =
+  /(?:خرید|خريد|برداشت|پرداخت|واریز|انتقال|مبلغ|بدهکار|بستانکار|کاهش|افزایش|وجه)$/;
 
 function extractAmounts(text: string): AmountMatch[] {
   const results: AmountMatch[] = [];
@@ -73,16 +99,54 @@ function extractAmounts(text: string): AmountMatch[] {
     const digits = match[1].replace(/,/g, '');
     if (digits.length < 4) continue;
 
-    // به‌جای lookbehind: ۲۵ کاراکترِ قبل از عدد را نگاه می‌کنیم.
+    // به‌جای lookbehind: ۲۵ کاراکترِ قبل از عدد را نگاه می‌کنیم و
+    // جداکننده‌های چسبیده به عدد را کنار می‌گذاریم تا به خود برچسب برسیم.
     const before = text.slice(Math.max(0, match.index - 25), match.index);
+    const label = before.replace(/[\s:.\-–—]+$/, '');
+
+    // ترتیب مهم است: «مانده حساب» هم به «حساب» ختم می‌شود، پس اول مانده.
+    if (BALANCE_LABEL.test(label)) {
+      results.push({
+        value: Number(digits),
+        currency: match[2] === 'تومان' ? 'toman' : 'rial',
+        isBalance: true,
+        labelled: false,
+        grouped: match[1].includes(','),
+      });
+      continue;
+    }
+
+    if (IDENTIFIER_LABEL.test(label)) continue;
+
     results.push({
       value: Number(digits),
       currency: match[2] === 'تومان' ? 'toman' : 'rial',
-      isBalance: /مانده|موجودی/.test(before),
+      isBalance: false,
+      labelled: SPEND_LABEL.test(label),
+      grouped: match[1].includes(','),
     });
   }
 
   return results;
+}
+
+/**
+ * انتخاب مبلغ تراکنش از بین عددهای پیامک.
+ *
+ * ترتیب اولویت: عددی که برچسب تراکنش دارد، بعد عددی که جداکننده‌ی هزارگان
+ * دارد، بعد اولین عدد. «اولین عدد» به‌تنهایی کافی نیست چون بعضی بانک‌ها
+ * شماره‌ی حساب را قبل از مبلغ می‌آورند.
+ */
+function pickSpendAmount(amounts: AmountMatch[]): AmountMatch | null {
+  const spendable = amounts.filter(a => !a.isBalance);
+
+  return (
+    spendable.find(a => a.labelled) ??
+    spendable.find(a => a.grouped) ??
+    spendable[0] ??
+    amounts[0] ??
+    null
+  );
 }
 
 function extractMerchant(text: string): { merchant: string | null; category: CategoryId } {
@@ -101,21 +165,74 @@ function extractMerchant(text: string): { merchant: string | null; category: Cat
   return { merchant: null, category: 'other' };
 }
 
+/**
+ * استخراج تاریخ از متن پیامک.
+ *
+ * سه شکل رایج در پیامک بانک‌های ایرانی:
+ *   1404/06/14-21:12   سال کامل شمسی
+ *   06/18-08:32        فقط ماه و روز
+ *   14:05              فقط ساعت
+ *
+ * چرا مهم است: بدون این، پیامکِ دیروز با تاریخ «همین الان» ثبت می‌شد و هم
+ * تقویم و هم مجموع «امروز» را خراب می‌کرد.
+ */
+function extractDate(text: string, now = new Date()): string | null {
+  const time = /(\d{1,2}):(\d{2})/.exec(text);
+  const hour = time ? Number(time[1]) : 0;
+  const minute = time ? Number(time[2]) : 0;
+
+  const full = /(1[34]\d{2})\/(\d{1,2})\/(\d{1,2})/.exec(text);
+  if (full) {
+    const date = toGregorian(Number(full[1]), Number(full[2]), Number(full[3]));
+    date.setHours(hour, minute, 0, 0);
+    return date.toISOString();
+  }
+
+  // ماه/روز بدون سال. سال شمسیِ جاری را می‌گذاریم؛ اگر تاریخ در آینده افتاد
+  // یعنی پیامک مال سال قبل است (پیامکِ اسفند که در فروردین وارد می‌شود).
+  const short = /(?:^|[^\d/])(\d{1,2})\/(\d{1,2})(?![\d/])/.exec(text);
+  if (short) {
+    const month = Number(short[1]);
+    const day = Number(short[2]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+    const { jy } = toJalali(now);
+    let date = toGregorian(jy, month, day);
+    date.setHours(hour, minute, 0, 0);
+
+    if (date.getTime() > now.getTime() + 86_400_000) {
+      date = toGregorian(jy - 1, month, day);
+      date.setHours(hour, minute, 0, 0);
+    }
+    return date.toISOString();
+  }
+
+  // فقط ساعت: همان امروز.
+  if (time) {
+    const date = new Date(now);
+    date.setHours(hour, minute, 0, 0);
+    return date.toISOString();
+  }
+
+  return null;
+}
+
 export function parseSms(raw: string): ParsedSms {
   const text = normalize(raw);
 
   const amounts = extractAmounts(text);
-  const spend = amounts.find(a => !a.isBalance) ?? amounts[0] ?? null;
+  const spend = pickSpendAmount(amounts);
   const amount = spend ? (spend.currency === 'rial' ? spend.value / 10 : spend.value) : null;
 
-  const { merchant, category } = extractMerchant(text);
+  // نام بانک از متن برداشته می‌شود چون بعضی بانک‌ها هم‌نام فروشگاه‌های
+  // زنجیره‌ای‌اند: «بانک رفاه» نباید فروشگاه رفاه خوانده شود.
+  const { merchant, category } = extractMerchant(text.replace(BANK_MENTION_RE, ' '));
 
   const bank = BANKS.find(b => text.includes(b.replace('بانک ', ''))) ?? null;
   const cardMatch = /\*{2,}\s*(\d{4})/.exec(text);
   const type: TransactionType = CREDIT_KEYWORDS.some(k => text.includes(k)) ? 'credit' : 'debit';
 
-  // TODO: استخراج تاریخ شمسی از متن پیامک (الگوی 1404/06/14) و تبدیل به میلادی.
-  const date = new Date().toISOString();
+  const date = extractDate(text) ?? new Date().toISOString();
 
   let confidence = 0;
   if (amount) confidence += 0.5;

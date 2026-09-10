@@ -231,6 +231,87 @@ $env:ANDROID_HOME = "E:\android_studio\Android\Sdk"; .\android\gradlew.bat -p an
 
 ---
 
+## کلید امضای release
+
+APK بدون کلید واقعی برای کافه‌بازار بی‌مصرف است. این کار **یک‌بار** انجام می‌شود
+و بعدش همه‌ی نسخه‌ها با همان کلید امضا می‌شوند.
+
+> **رمزی که اینجا می‌سازی را جای امنی نگه دار و در چت یا گیت نگذار.**
+> اگر کلید یا رمزش را گم کنی، دیگر هیچ‌وقت نمی‌توانی اپ منتشرشده را آپدیت کنی —
+> کافه‌بازار آپدیتی که با کلید دیگری امضا شده باشد را قبول نمی‌کند و باید اپ را
+> از اول با شناسه‌ی جدید منتشر کنی. کاربرها هم همه‌چیزشان را از دست می‌دهند.
+
+### قدم ۱: کلید را بساز
+
+جایی **بیرون از پوشه‌ی پروژه** بسازش تا اشتباهی داخل گیت نرود:
+
+```powershell
+& "$env:JAVA_HOME\bin\keytool.exe" -genkeypair -v -storetype PKCS12 -keystore "$env:USERPROFILE\polbin-release.keystore" -alias polbin -keyalg RSA -keysize 2048 -validity 10000
+```
+
+اگر `JAVA_HOME` ست نیست، از JDK اندروید استودیو استفاده کن:
+
+```powershell
+& "E:\android_studio\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v -storetype PKCS12 -keystore "$env:USERPROFILE\polbin-release.keystore" -alias polbin -keyalg RSA -keysize 2048 -validity 10000
+```
+
+چند سوال می‌پرسد:
+
+- **رمز** — خودت انتخاب کن و جایی امن نگه دار.
+- **نام و نام خانوادگی، واحد، سازمان، شهر، استان، کد کشور** — می‌توانی خالی بگذاری
+  یا هرچه می‌خواهی بنویسی؛ روی کارکرد اثری ندارد. کد کشور ایران `IR` است.
+
+`validity 10000` یعنی حدود ۲۷ سال اعتبار — عمداً طولانی، چون بعد از انقضا دیگر
+نمی‌شود با همان کلید آپدیت داد.
+
+### قدم ۲: رمز را در فایل خارج از پروژه بگذار
+
+فایل `C:\Users\<نام کاربری>\.gradle\gradle.properties` را باز کن (اگر نیست بساز)
+و این چهار خط را اضافه کن:
+
+```properties
+POLBIN_STORE_FILE=C:\Users\<نام کاربری>\polbin-release.keystore
+POLBIN_KEY_ALIAS=polbin
+POLBIN_STORE_PASSWORD=<رمزی که گذاشتی>
+POLBIN_KEY_PASSWORD=<همان رمز>
+```
+
+توجه: در فایل `.properties` بک‌اسلش باید **دوتایی** نوشته شود.
+
+این فایل بیرون از مخزن است و هیچ‌وقت commit نمی‌شود. `build.gradle` فقط همین
+مقدارها را می‌خواند؛ هیچ رمزی داخل پروژه نیست.
+
+### قدم ۳: بیلد بگیر و مطمئن شو
+
+```powershell
+$env:JAVA_TOOL_OPTIONS = "-Djdk.net.unixdomain.tmpdir=C:\Users\Mahziyar79\.gradle\javatmp"; .\android\gradlew.bat -p android assembleRelease
+```
+
+اگر تنظیمات درست باشد، **هشدار زرد** `polbin: POLBIN_STORE_FILE تنظیم نشده` دیگر
+چاپ نمی‌شود. برای اطمینان کامل، امضای APK را ببین:
+
+```powershell
+& "E:\android_studio\Android\Sdk\build-tools\37.0.0\apksigner.bat" verify --print-certs "android\app\build\outputs\apk\release\app-arm64-v8a-release.apk"
+```
+
+اگر `CN=Android Debug` دیدی یعنی هنوز با کلید debug امضا می‌شود.
+
+### قدم ۴: نسخه‌ی قدیمی را حذف و دوباره نصب کن
+
+اندروید اجازه نمی‌دهد اپی که با کلید debug امضا شده با کلید جدید آپدیت شود.
+
+**قبل از حذف، از داخل خود اپ فایل پشتیبان JSON بگیر** (صفحه‌ی «پشتیبان و خروجی»)
+وگرنه تراکنش‌ها و بودجه‌ات می‌پرد. بعد از نصب نسخه‌ی جدید، از همان صفحه برشان
+گردان. این آخرین باری است که لازم است؛ از این به بعد همه‌ی نسخه‌ها روی هم آپدیت
+می‌شوند.
+
+### پشتیبان از خود کلید
+
+فایل `polbin-release.keystore` را جای دومی هم نگه دار — فلش، هارد دیگر، یا فضای
+ابری خصوصی. گم شدنش برگشت‌ناپذیر است.
+
+---
+
 ## عیب‌یابی
 
 خطاهایی که واقعاً در این پروژه دیدیم و علتشان:

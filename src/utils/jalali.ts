@@ -184,3 +184,47 @@ export function jalaliWeekdayIndex(date: Date): number {
 export function weekdayLabel(date: Date): string {
   return JALALI_WEEKDAYS[date.getDay()];
 }
+
+/**
+ * بازه‌ی یک ماه شمسی: از نیمه‌شب روز اول تا نیمه‌شب اول ماه بعد.
+ *
+ * `monthsBack = 0` ماه جاری، `1` ماه قبل. برخلاف «۳۰ روز گذشته» که پنجره‌ای
+ * غلتان است، این با همان ماهی جور درمی‌آید که کاربر در ذهنش دارد و بودجه هم
+ * روی همین حساب می‌شود.
+ */
+export function jalaliMonthRange(base: Date, monthsBack = 0): { start: Date; end: Date } {
+  const { jy, jm } = toJalali(base);
+
+  let year = jy;
+  let month = jm - monthsBack;
+  while (month < 1) {
+    month += 12;
+    year -= 1;
+  }
+
+  const start = toGregorian(year, month, 1);
+  start.setHours(0, 0, 0, 0);
+
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const end = toGregorian(nextYear, nextMonth, 1);
+  end.setHours(0, 0, 0, 0);
+
+  return { start, end };
+}
+
+/** چند روز تا آخر ماه شمسی مانده، شامل امروز. */
+export function daysLeftInJalaliMonth(base = new Date()): number {
+  const { jy, jm, jd } = toJalali(base);
+  return jalaliMonthLength(jy, jm) - jd + 1;
+}
+
+/** «شهریور» — بدون سال، برای جایی که سال از متن معلوم است. */
+export function jalaliMonthName(base: Date, monthsBack = 0): string {
+  const { jm } = toJalali(base);
+
+  let month = jm - monthsBack;
+  while (month < 1) month += 12;
+
+  return JALALI_MONTHS[month - 1];
+}

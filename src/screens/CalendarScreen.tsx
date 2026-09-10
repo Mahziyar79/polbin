@@ -33,7 +33,7 @@ function sumOf(transactions: Transaction[]): number {
 }
 
 export function CalendarScreen({ navigation }: Props) {
-  const { transactions, lastAddedId, removeTransaction } = useTransactions();
+  const { transactions, lastAddedId } = useTransactions();
 
   const today = useMemo(() => new Date(), []);
   const todayJalali = useMemo(() => toJalali(today), [today]);
@@ -94,7 +94,7 @@ export function CalendarScreen({ navigation }: Props) {
               <TransactionRow
                 tx={tx}
                 highlighted={tx.id === lastAddedId}
-                onDelete={removeTransaction}
+                onPress={id => navigation.navigate('EditTransaction', { id })}
               />
             </View>
           ))}

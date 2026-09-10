@@ -2,6 +2,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- خواندن خودکار پیامک بانکی. پیامک از گوشی خارج نمی‌شود؛ متن فقط از
+         SmsReceiver به صفحه‌ی تایید می‌رود و هیچ‌جا ذخیره نمی‌شود. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
       android:name=".MainApplication"
       android:label="@string/app_name"
@@ -29,6 +34,17 @@
             <data android:mimeType="text/plain" />
         </intent-filter>
       </activity>
+
+      <!-- پیامک تازه را می‌گیرد. android:permission تضمین می‌کند فقط خود
+           سیستم می‌تواند این broadcast را بفرستد، نه اپ‌های دیگر. -->
+      <receiver
+        android:name=".SmsReceiver"
+        android:exported="true"
+        android:permission="android.permission.BROADCAST_SMS">
+        <intent-filter android:priority="999">
+            <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+        </intent-filter>
+      </receiver>
 
       <!-- برای دادن فایل خروجی به اپ‌های دیگر بدون افشای مسیر داخلی -->
       <provider

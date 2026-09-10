@@ -10,6 +10,7 @@ import { RootStackParamList } from '../navigation/types';
 import { backupFileName, buildBackup, parseBackup } from '../services/backup';
 import { isAvailable, pickTextFile, printHtml, saveAndShare } from '../services/deviceFiles';
 import { buildReportHtml } from '../services/reportHtml';
+import { useBudget } from '../state/BudgetContext';
 import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
@@ -20,6 +21,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Backup'>;
 export function BackupScreen({ navigation }: Props) {
   const { transactions, replaceAll } = useTransactions();
   const { categories, customCategories, replaceCustom } = useCategories();
+  const { monthly, setMonthly, clear: clearBudget } = useBudget();
 
   const [busy, setBusy] = useState<'export' | 'import' | 'pdf' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export function BackupScreen({ navigation }: Props) {
 
   const handleExport = () =>
     run('export', async () => {
-      const json = buildBackup({ transactions, customCategories });
+      const json = buildBackup({ transactions, customCategories, monthlyBudget: monthly });
       await saveAndShare(backupFileName(), 'application/json', json);
     });
 
@@ -79,6 +81,11 @@ export function BackupScreen({ navigation }: Props) {
             onPress: () => {
               replaceCustom(contents.customCategories);
               replaceAll(contents.transactions);
+              if (contents.monthlyBudget === null) {
+                clearBudget();
+              } else {
+                setMonthly(contents.monthlyBudget);
+              }
               setMessage('بازگردانی انجام شد.');
             },
           },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useCategories } from '../state/CategoriesContext';
 import { Transaction } from '../types';
 import { colors, radius, spacing } from '../theme';
@@ -9,32 +9,14 @@ import { Text } from './Text';
 interface Props {
   tx: Transaction;
   highlighted?: boolean;
-  /** اگر داده شود، ردیف قابل لمس می‌شود و حذف را پیشنهاد می‌دهد. */
-  onDelete?: (id: string) => void;
+  /** اگر داده شود، ردیف قابل لمس می‌شود — معمولاً برای باز کردن ویرایش. */
+  onPress?: (id: string) => void;
 }
 
-/**
- * یک ردیف تراکنش — در داشبورد و تقویم از همین استفاده می‌شود.
- *
- * تایید حذف عمداً همین‌جاست نه در صفحه‌ها: متن تایید و شکل دیالوگ یک‌بار
- * نوشته می‌شود و هر صفحه‌ای که ردیف را نشان می‌دهد همان رفتار را می‌گیرد.
- */
-export function TransactionRow({ tx, highlighted, onDelete }: Props) {
+/** یک ردیف تراکنش — در داشبورد و تقویم از همین استفاده می‌شود. */
+export function TransactionRow({ tx, highlighted, onPress }: Props) {
   const { resolve } = useCategories();
   const category = resolve(tx.categoryId, tx.type);
-
-  function confirmDelete() {
-    if (!onDelete) return;
-
-    Alert.alert(
-      'حذف تراکنش',
-      `«${tx.merchant}» به مبلغ ${formatToman(tx.amount)}\n\nاین تراکنش پاک می‌شود و برنمی‌گردد.`,
-      [
-        { text: 'انصراف', style: 'cancel' },
-        { text: 'حذف', style: 'destructive', onPress: () => onDelete(tx.id) },
-      ],
-    );
-  }
 
   const content = (
     <View style={[styles.row, highlighted ? styles.highlighted : null]}>
@@ -57,10 +39,10 @@ export function TransactionRow({ tx, highlighted, onDelete }: Props) {
     </View>
   );
 
-  if (!onDelete) return content;
+  if (!onPress) return content;
 
   return (
-    <TouchableOpacity onPress={confirmDelete} activeOpacity={0.6}>
+    <TouchableOpacity onPress={() => onPress(tx.id)} activeOpacity={0.6}>
       {content}
     </TouchableOpacity>
   );

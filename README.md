@@ -22,11 +22,20 @@
 | داشبورد | `src/screens/DashboardScreen.tsx` | تب هزینه/درآمد، مجموع بازه، نمودار دسته‌ها، تراکنش‌های اخیر، بینش‌ها |
 | تایید تراکنش | `src/screens/ConfirmTransactionScreen.tsx` | نمایش نتیجه‌ی پارس پیامک، اصلاح مبلغ/فروشگاه/دسته، تایید |
 | افزودن دستی | `src/screens/AddTransactionScreen.tsx` | ثبت خرج یا درآمدی که پیامکش نیامده |
+| ویرایش تراکنش | `src/screens/EditTransactionScreen.tsx` | لمس هر ردیف — اصلاح یا حذف |
 | دسته‌بندی‌ها | `src/screens/CategoriesScreen.tsx` | ساخت و حذف دسته‌ی دلخواه |
+| بودجه | `src/screens/BudgetScreen.tsx` | سقف خرج ماهانه با پیشنهاد بر اساس ماه‌های قبل |
 | تقویم | `src/screens/CalendarScreen.tsx` | تقویم شمسی با تراکنش‌های هر روز |
 | پشتیبان و خروجی | `src/screens/BackupScreen.tsx` | خروجی JSON، بازگردانی از فایل، گزارش PDF |
 
 ناوبری در `src/navigation/RootNavigator.tsx` است: داشبورد در پایه‌ی استک و بقیه modal.
+
+تراکنش از دو راه وارد می‌شود:
+
+- **خودکار** — [SmsReceiver.kt](android/app/src/main/java/com/polbin/SmsReceiver.kt)
+  پیامک تازه را می‌گیرد. اپ باز باشد → صفحه‌ی تایید؛ بسته باشد → نوتیفیکیشن.
+  مجوزش اختیاری است و از کارت داشبورد گرفته می‌شود.
+- **دستی** — منوی «هم‌رسانی» اندروید؛ بدون مجوز پیامک هم کار می‌کند.
 
 ## اجرا
 
@@ -60,7 +69,7 @@ src/
   screens/      هفت صفحه
   services/     smsParser (regex) · analytics (بینش‌ها) · fakeApi (لایه‌ی جعلی شبکه) · storage (MMKV)
                 backup (JSON) · reportHtml (PDF) · deviceFiles (ماژول نیتیو) · shareIntent
-  state/        ProfileContext · CategoriesContext · TransactionsContext
+  state/        ProfileContext · CategoriesContext · TransactionsContext · BudgetContext
   theme/        رنگ، فاصله، شعاع
   utils/        تبدیل تاریخ شمسی و قالب‌بندی اعداد/مبالغ فارسی
 ```

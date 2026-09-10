@@ -1,0 +1,6 @@
+node_modules/
+# خروجی گرادل — گزارش تست‌ها فایل‌های JS تولیدشده دارد که کد ما نیستند.
+android/build/
+android/app/build/
+ios/
+vendor/

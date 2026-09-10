@@ -11,6 +11,8 @@ interface TransactionsContextValue {
   /** آخرین تراکنشی که کاربر تایید کرده — برای هایلایت در داشبورد. */
   lastAddedId: string | null;
   addTransaction: (input: Omit<Transaction, 'id'>) => Promise<Transaction>;
+  /** ویرایش فیلدهای یک تراکنش. شناسه و تاریخ دست‌نخورده می‌مانند. */
+  updateTransaction: (id: string, patch: Partial<Omit<Transaction, 'id'>>) => void;
   /** حذف یک تراکنش. برگشت‌ناپذیر است، پس صدا زدنش باید تایید گرفته باشد. */
   removeTransaction: (id: string) => void;
   /** تراکنش‌های یک دسته را به دسته‌ی دیگر منتقل می‌کند — موقع حذف دسته. */
@@ -84,6 +86,17 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
     [],
   );
 
+  const updateTransaction = useCallback(
+    (id: string, patch: Partial<Omit<Transaction, 'id'>>) => {
+      setTransactions(prev => {
+        const next = prev.map(tx => (tx.id === id ? { ...tx, ...patch } : tx));
+        writeJSON(STORAGE_KEYS.transactions, next);
+        return next;
+      });
+    },
+    [],
+  );
+
   const removeTransaction = useCallback((id: string) => {
     setTransactions(prev => {
       const next = prev.filter(tx => tx.id !== id);
@@ -109,6 +122,7 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
       error,
       lastAddedId,
       addTransaction,
+      updateTransaction,
       removeTransaction,
       reassignCategory,
       reload,
@@ -120,6 +134,7 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
       error,
       lastAddedId,
       addTransaction,
+      updateTransaction,
       removeTransaction,
       reassignCategory,
       reload,
