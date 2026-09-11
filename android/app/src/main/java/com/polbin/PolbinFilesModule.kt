@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.print.PrintAttributes
 import android.print.PrintManager
+import android.util.Base64
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.content.FileProvider
@@ -74,10 +75,30 @@ class PolbinFilesModule(private val reactContext: ReactApplicationContext) :
    */
   @ReactMethod
   fun saveAndShare(fileName: String, mimeType: String, content: String, promise: Promise) {
+    writeAndShare(fileName, mimeType, content.toByteArray(Charsets.UTF_8), promise)
+  }
+
+  /**
+   * همان، برای فایل باینری (xlsx). bridge ری‌اکت‌نیتیو فقط رشته می‌فرستد، پس
+   * بایت‌ها base64 می‌آیند و اینجا باز می‌شوند.
+   */
+  @ReactMethod
+  fun saveAndShareBase64(fileName: String, mimeType: String, base64: String, promise: Promise) {
+    val bytes =
+        try {
+          Base64.decode(base64, Base64.NO_WRAP)
+        } catch (error: IllegalArgumentException) {
+          promise.reject(ERROR_WRITE, "محتوای فایل معتبر نیست.", error)
+          return
+        }
+    writeAndShare(fileName, mimeType, bytes, promise)
+  }
+
+  private fun writeAndShare(fileName: String, mimeType: String, bytes: ByteArray, promise: Promise) {
     try {
       val folder = File(reactContext.cacheDir, "exports").apply { mkdirs() }
       val file = File(folder, fileName)
-      file.writeText(content, Charsets.UTF_8)
+      file.writeBytes(bytes)
 
       val uri =
           FileProvider.getUriForFile(reactContext, "${reactContext.packageName}.fileprovider", file)

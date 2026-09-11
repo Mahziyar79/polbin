@@ -1,5 +1,5 @@
 import { CategoryId, ParsedSms, TransactionType } from '../types';
-import { BANK_NAMES } from '../data/banks';
+import { BANK_MENTIONS, BANK_NAMES } from '../data/banks';
 import { toEnDigits } from '../utils/format';
 import { toGregorian, toJalali } from '../utils/jalali';
 
@@ -11,6 +11,24 @@ import { toGregorian, toJalali } from '../utils/jalali';
  * نکته: Hermes از lookbehind پشتیبانی نمی‌کند، پس هیچ‌جا از `(?<=...)` استفاده نشده.
  */
 
+
+/**
+ * نام بانک باید یک واژه‌ی مستقل باشد، نه تکه‌ای از واژه‌ی دیگر.
+ *
+ * نسخه‌ی قبلی `includes` ساده بود و «دی» را داخل «موجودی»، «ملی» را داخل
+ * «عملیات» و «شهر» را داخل «شهریور» پیدا می‌کرد — یعنی تقریباً هر پیامکی که
+ * «موجودی» داشت به «بانک دی» نسبت داده می‌شد. `\b` جاوااسکریپت فقط حروف
+ * لاتین را مرز می‌داند، پس مرز به‌صورت دستی «هر چیزی جز حرف فارسی» است.
+ */
+const NOT_PERSIAN = String.raw`[^\u0600-\u06FF]`;
+
+function findBankName(text: string): string | null {
+  for (const { word, name } of BANK_MENTIONS) {
+    const re = new RegExp(`(?:^|${NOT_PERSIAN})${word}(?=$|${NOT_PERSIAN})`);
+    if (re.test(text)) return name;
+  }
+  return null;
+}
 
 /** برای پاک کردن نام بانک از متن قبل از تشخیص فروشگاه. */
 const BANK_MENTION_RE = new RegExp(
@@ -41,8 +59,13 @@ const MERCHANT_RULES: Array<{ pattern: RegExp; merchant: string; category: Categ
   { pattern: /کارت\s*به\s*کارت|انتقال\s*وجه|پایا|ساتنا/i, merchant: 'انتقال وجه', category: 'transfer' },
 ];
 
-/** ی/ک عربی، نیم‌فاصله و فاصله‌های اضافه را یکدست می‌کند. */
-function normalize(raw: string): string {
+/**
+ * ی/ک عربی، نیم‌فاصله و فاصله‌های اضافه را یکدست می‌کند.
+ *
+ * export شده چون تشخیص پیامک تکراری هم باید دقیقاً همین را به کار ببرد — دو
+ * نرمال‌ساز جدا خیلی زود از هم فاصله می‌گرفتند و یک پیامک دوبار ثبت می‌شد.
+ */
+export function normalizeSmsText(raw: string): string {
   return toEnDigits(raw)
     .replace(/[يﻱﻲ]/g, 'ی')
     .replace(/[كﻙﻚ]/g, 'ک')
@@ -50,6 +73,8 @@ function normalize(raw: string): string {
     .replace(/[٬،]/g, ',')
     .replace(/[ \t]+/g, ' ');
 }
+
+const normalize = normalizeSmsText;
 
 interface AmountMatch {
   value: number;
@@ -137,6 +162,26 @@ function pickSpendAmount(amounts: AmountMatch[]): AmountMatch | null {
   );
 }
 
+/** اولین عددی که برچسب «مانده/موجودی» دارد — به تومان. */
+function pickBalance(amounts: AmountMatch[]): number | null {
+  const found = amounts.find(a => a.isBalance);
+  if (!found) return null;
+  // ریالِ فرد (۵۲۸,۹۲۶,۴۱۲) تومانِ اعشاری می‌دهد؛ تومان اعشار ندارد.
+  return Math.round(found.currency === 'rial' ? found.value / 10 : found.value);
+}
+
+/**
+ * چهار رقم آخر شماره‌ی حساب یا سپرده.
+ *
+ * پیامک بعضی بانک‌ها به‌جای «کارت ****۱۲۳۴» شماره‌ی حساب می‌دهد. برای اینکه
+ * موجودی هر حساب جدا نگه داشته شود، همان چهار رقم آخر کافی است — کل شماره را
+ * عمداً ذخیره نمی‌کنیم.
+ */
+function extractAccountLast4(text: string): string | null {
+  const match = /(?:حساب|سپرده)\s*:?\s*(\d{6,})/.exec(text);
+  return match ? match[1].slice(-4) : null;
+}
+
 function extractMerchant(text: string): { merchant: string | null; category: CategoryId } {
   for (const rule of MERCHANT_RULES) {
     if (rule.pattern.test(text)) {
@@ -169,7 +214,8 @@ function extractDate(text: string, now = new Date()): string | null {
   const hour = time ? Number(time[1]) : 0;
   const minute = time ? Number(time[2]) : 0;
 
-  const full = /(1[34]\d{2})\/(\d{1,2})\/(\d{1,2})/.exec(text);
+  // جداکننده می‌تواند «/»، «.» یا «-» باشد: بلوبانک می‌نویسد ۱۴۰۵.۰۶.۲۰.
+  const full = /(1[34]\d{2})[/.-](\d{1,2})[/.-](\d{1,2})/.exec(text);
   if (full) {
     const date = toGregorian(Number(full[1]), Number(full[2]), Number(full[3]));
     date.setHours(hour, minute, 0, 0);
@@ -216,8 +262,10 @@ export function parseSms(raw: string): ParsedSms {
   // زنجیره‌ای‌اند: «بانک رفاه» نباید فروشگاه رفاه خوانده شود.
   const { merchant, category } = extractMerchant(text.replace(BANK_MENTION_RE, ' '));
 
-  const bank = BANK_NAMES.find(name => text.includes(name.replace('بانک ', ''))) ?? null;
+  const bank = findBankName(text);
   const cardMatch = /\*{2,}\s*(\d{4})/.exec(text);
+  const balance = pickBalance(amounts);
+  const accountLast4 = extractAccountLast4(text);
   const type: TransactionType = CREDIT_KEYWORDS.some(k => text.includes(k)) ? 'credit' : 'debit';
 
   const date = extractDate(text) ?? new Date().toISOString();
@@ -235,6 +283,8 @@ export function parseSms(raw: string): ParsedSms {
     date,
     bank,
     cardLast4: cardMatch ? cardMatch[1] : null,
+    accountLast4,
+    balance,
     type,
     confidence: Number(confidence.toFixed(2)),
     raw,

@@ -3,12 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card } from '../components/Card';
 import { ConfidenceBar } from '../components/ConfidenceBar';
+import { DuplicateCard } from '../components/DuplicateCard';
 import { FormFooter } from '../components/FormFooter';
 import { FormScreenHeader } from '../components/FormScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { TransactionFormFields } from '../components/TransactionFormFields';
 import { useTransactionForm } from '../hooks/useTransactionForm';
 import { RootStackParamList } from '../navigation/types';
+import { DuplicateMatch, findDuplicate } from '../services/duplicates';
 import { parseSmsRemote } from '../services/fakeApi';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, spacing } from '../theme';
@@ -20,7 +22,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ConfirmTransaction'>;
 
 export function ConfirmTransactionScreen({ route, navigation }: Props) {
   const { rawSms } = route.params;
-  const { addTransaction } = useTransactions();
+  const { transactions, addTransaction } = useTransactions();
   const form = useTransactionForm();
   const { setValues } = form;
 
@@ -29,11 +31,30 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
 
+  /**
+   * یک بار، درست بعد از پارس، و نه با هر ویرایش کاربر: اگر با هر تغییر مبلغ
+   * دوباره حساب می‌شد، کارت وسط تایپ ظاهر و ناپدید می‌شد و کاربر را گیج می‌کرد.
+   * «تراکنش جدید است» هم یک بار برای همیشه کارت را برمی‌دارد.
+   */
+  const [duplicate, setDuplicate] = useState<DuplicateMatch | null>(null);
+
   useEffect(() => {
     let mounted = true;
     parseSmsRemote(rawSms).then(result => {
       if (!mounted) return;
       setParsed(result);
+      setDuplicate(
+        findDuplicate(
+          {
+            amount: result.amount ?? 0,
+            type: result.type,
+            date: result.date,
+            bank: result.bank,
+            rawSms,
+          },
+          transactions,
+        ),
+      );
       setValues({
         amount: result.amount,
         merchant: result.merchant,
@@ -45,6 +66,8 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
     return () => {
       mounted = false;
     };
+    // فهرست تراکنش‌ها عمداً وابستگی نیست — فقط وضعیت لحظه‌ی رسیدن پیامک مهم است.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawSms, setValues]);
 
   async function handleConfirm() {
@@ -59,6 +82,8 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         date: parsed.date,
         bank: form.bank ?? undefined,
         cardLast4: parsed.cardLast4 ?? undefined,
+        accountLast4: parsed.accountLast4 ?? undefined,
+        balance: parsed.balance ?? undefined,
         type: form.type,
         rawSms,
       });
@@ -88,6 +113,14 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
           title="این درست است؟"
           subtitle="هر چیزی را که لازم است اصلاح کن، بعد با یک لمس تایید کن."
         />
+
+        {duplicate ? (
+          <DuplicateCard
+            match={duplicate}
+            onSkip={() => navigation.goBack()}
+            onDismiss={() => setDuplicate(null)}
+          />
+        ) : null}
 
         <TransactionFormFields
           form={form}

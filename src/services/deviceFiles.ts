@@ -1,8 +1,11 @@
 import { NativeModules } from 'react-native';
+import { toBase64 } from './xlsx';
 
 interface PolbinFilesModule {
   /** فایل را می‌سازد و منوی هم‌رسانی را باز می‌کند؛ مسیر فایل را برمی‌گرداند. */
   saveAndShare(fileName: string, mimeType: string, content: string): Promise<string>;
+  /** همان، برای فایل باینری؛ محتوا base64 است. */
+  saveAndShareBase64(fileName: string, mimeType: string, base64: string): Promise<string>;
   /** محتوای فایل انتخاب‌شده، یا null اگر کاربر منصرف شود. */
   pickTextFile(): Promise<string | null>;
   /** پنجره‌ی چاپ اندروید را با محتوای HTML باز می‌کند. */
@@ -30,6 +33,17 @@ export async function saveAndShare(
 ): Promise<void> {
   if (!native) throw new Error(MISSING);
   await native.saveAndShare(fileName, mimeType, content);
+}
+
+/** فایل باینری (مثل xlsx). بایت‌ها base64 می‌شوند چون bridge فقط رشته می‌برد. */
+export async function saveAndShareBytes(
+  fileName: string,
+  mimeType: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  if (!native) throw new Error(MISSING);
+  if (typeof native.saveAndShareBase64 !== 'function') throw new Error(MISSING);
+  await native.saveAndShareBase64(fileName, mimeType, toBase64(bytes));
 }
 
 export async function pickTextFile(): Promise<string | null> {

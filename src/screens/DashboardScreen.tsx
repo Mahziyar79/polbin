@@ -14,6 +14,7 @@ import { CategoryBars } from '../components/CategoryBars';
 import { Fab } from '../components/Fab';
 import { ProportionBar } from '../components/ProportionBar';
 import { AppMenu } from '../components/AppMenu';
+import { BalancesCard } from '../components/BalancesCard';
 import { BudgetCard } from '../components/BudgetCard';
 import { InstallmentsCard } from '../components/InstallmentsCard';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -33,6 +34,7 @@ import { useInstallments } from '../state/InstallmentsContext';
 import { useProfile } from '../state/ProfileContext';
 import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
+import { latestBalances } from '../services/balances';
 import { unpaidThisMonth } from '../services/installments';
 import { colors, radius, spacing } from '../theme';
 import { Transaction, TransactionType } from '../types';
@@ -100,6 +102,7 @@ export function DashboardScreen({ navigation }: Props) {
   );
   // قسط‌های پرداخت‌نشده‌ی همین ماه، برای کم شدن از عدد آزادِ بودجه.
   const committed = useMemo(() => unpaidThisMonth(installments), [installments]);
+  const balances = useMemo(() => latestBalances(transactions), [transactions]);
   const total = useMemo(() => totalSpend(periodTransactions), [periodTransactions]);
   const income = useMemo(() => totalIncome(periodTransactions), [periodTransactions]);
   const balance = useMemo(() => balanceOf(periodTransactions), [periodTransactions]);
@@ -163,6 +166,8 @@ export function DashboardScreen({ navigation }: Props) {
         </View>
 
         <SmsAutoCard />
+
+        <BalancesCard accounts={balances} />
 
         <View style={styles.modeTabs}>
           {MODES.map(option => {

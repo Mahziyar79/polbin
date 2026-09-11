@@ -36,6 +36,13 @@ export interface Transaction {
   date: string;
   bank?: string;
   cardLast4?: string;
+  /** چهار رقم آخر شماره‌ی حساب/سپرده، وقتی پیامک کارت ندارد. */
+  accountLast4?: string;
+  /**
+   * مانده‌ی حساب بعد از این تراکنش، به تومان — فقط وقتی از پیامک آمده.
+   * منبع «موجودی هر کارت» روی داشبورد است.
+   */
+  balance?: number;
   type: TransactionType;
   rawSms?: string;
 }
@@ -48,6 +55,9 @@ export interface ParsedSms {
   date: string;
   bank: string | null;
   cardLast4: string | null;
+  accountLast4: string | null;
+  /** مانده‌ی اعلام‌شده در پیامک، به تومان. */
+  balance: number | null;
   type: TransactionType;
   /** میزان اطمینان پارسر بین ۰ تا ۱ */
   confidence: number;

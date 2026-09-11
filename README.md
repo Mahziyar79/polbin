@@ -30,7 +30,7 @@
 | قسط‌ها | `src/screens/InstallmentsScreen.tsx` | وام‌ها و خریدهای قسطی، جدول سررسیدها، علامت زدن پرداخت |
 | افزودن قسط | `src/screens/AddInstallmentScreen.tsx` | عنوان، مبلغ هر قسط، تعداد، اولین سررسید، بانک |
 | درباره‌ی برنامه | `src/screens/AboutScreen.tsx` | قابلیت‌ها و حریم خصوصی |
-| پشتیبان و خروجی | `src/screens/BackupScreen.tsx` | خروجی JSON، بازگردانی از فایل، گزارش PDF |
+| پشتیبان و خروجی | `src/screens/BackupScreen.tsx` | خروجی JSON، بازگردانی از فایل، خروجی اکسل، گزارش PDF |
 
 ناوبری در `src/navigation/RootNavigator.tsx` است: داشبورد در پایه‌ی استک و بقیه با
 `slide_from_bottom` رویش. `presentation: 'modal'` عمداً هیچ‌جا نیست — در بیلد release
@@ -77,8 +77,9 @@ src/
   navigation/   استک اصلی و تایپ پارامترها
   screens/      دوازده صفحه
   services/     smsParser (regex) · analytics (مجموع و تفکیک) · installments (سررسید اقساط)
+                duplicates (تشخیص تراکنش تکراری) · balances (موجودی هر کارت از پیامک)
                 fakeApi (لایه‌ی جعلی شبکه) · storage (MMKV)
-                backup (JSON) · reportHtml (PDF) · deviceFiles (ماژول نیتیو) · shareIntent
+                backup (JSON) · xlsx (اکسل، بدون کتابخانه) · reportHtml (PDF) · deviceFiles (ماژول نیتیو) · shareIntent
   state/        ProfileContext · CategoriesContext · TransactionsContext · BudgetContext
                 InstallmentsContext
   theme/        رنگ، فاصله، شعاع

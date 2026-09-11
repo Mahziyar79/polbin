@@ -16,6 +16,11 @@ export interface Bank {
   /** نام کوتاه برای نشان، وقتی لوگو نیست. */
   short: string;
   color: string;
+  /**
+   * نام‌های دیگری که بانک در پیامک خودش را با آن معرفی می‌کند.
+   * بلوبانک پیامکش را فقط با «بلو» شروع می‌کند، نه «بلوبانک».
+   */
+  aliases?: string[];
 }
 
 export const BANKS: Bank[] = [
@@ -42,11 +47,17 @@ export const BANKS: Bank[] = [
   { id: 'khavarmianeh', name: 'بانک خاورمیانه', short: 'خاورمیانه', color: '#2C3E77' },
   { id: 'sarmayeh', name: 'بانک سرمایه', short: 'سرمایه', color: '#7D3C98' },
   { id: 'postbank', name: 'پست بانک', short: 'پست بانک', color: '#0B6E4F' },
-  { id: 'blu', name: 'بلوبانک', short: 'بلو', color: '#1D6FF2' },
+  { id: 'blu', name: 'بلوبانک', short: 'بلو', color: '#1D6FF2', aliases: ['بلو'] },
 ];
 
 /** فقط نام‌ها — پارسر پیامک با همین کار می‌کند. */
 export const BANK_NAMES: string[] = BANKS.map(bank => bank.name);
+
+/** هر واژه‌ای که باید به یک بانک برسد: نام بدون «بانک»، به‌علاوه‌ی نام‌های دیگرش. */
+export const BANK_MENTIONS: Array<{ word: string; name: string }> = BANKS.flatMap(bank => [
+  { word: bank.name.replace('بانک ', ''), name: bank.name },
+  ...(bank.aliases ?? []).map(word => ({ word, name: bank.name })),
+]);
 
 /** پیدا کردن بانک از روی نامی که در تراکنش ذخیره شده. */
 export function findBank(name?: string | null): Bank | null {

@@ -1,22 +1,43 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
+import { describeTransaction } from '../components/DuplicateCard';
 import { FormFooter } from '../components/FormFooter';
 import { FormScreenHeader } from '../components/FormScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { Text } from '../components/Text';
 import { TransactionFormFields } from '../components/TransactionFormFields';
 import { useTransactionForm } from '../hooks/useTransactionForm';
 import { RootStackParamList } from '../navigation/types';
+import { findDuplicate } from '../services/duplicates';
 import { useTransactions } from '../state/TransactionsContext';
-import { spacing } from '../theme';
+import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddTransaction'>;
 
 export function AddTransactionScreen({ navigation }: Props) {
-  const { addTransaction } = useTransactions();
+  const { transactions, addTransaction } = useTransactions();
   const form = useTransactionForm();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  /**
+   * فقط یک یادآوری نرم، بدون دکمه، و فقط در برابر تراکنش‌هایی که از پیامک
+   * آمده‌اند. حالت واقعی این است: پیامک خودکار ثبت شده و کاربر یادش رفته و
+   * دارد همان خرج را دستی می‌زند. دو خرج دستیِ هم‌مبلغ در یک روز (دو قهوه)
+   * کاملاً عادی است و نباید هشداری بگیرد.
+   */
+  const fromSms = useMemo(() => transactions.filter(tx => tx.rawSms), [transactions]);
+  const lookalike = useMemo(
+    () =>
+      form.amount > 0
+        ? findDuplicate(
+            { amount: form.amount, type: form.type, date: new Date().toISOString(), bank: form.bank },
+            fromSms,
+          )
+        : null,
+    [form.amount, form.type, form.bank, fromSms],
+  );
 
   async function handleSave() {
     if (!form.canSave) return;
@@ -51,6 +72,12 @@ export function AddTransactionScreen({ navigation }: Props) {
           autoFocusAmount
           onManageCategories={() => navigation.navigate('Categories')}
         />
+
+        {lookalike ? (
+          <Text style={styles.lookalike}>
+            {`امروز یک ${form.type === 'debit' ? 'خرج' : 'درآمد'} با همین مبلغ از پیامک بانک ثبت شده: ${describeTransaction(lookalike.existing)}. اگر همان است، دوباره ثبتش نکن.`}
+          </Text>
+        ) : null}
       </ScrollView>
 
       <FormFooter
@@ -67,4 +94,12 @@ export function AddTransactionScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
+  lookalike: {
+    fontSize: 12,
+    color: colors.textMuted,
+    lineHeight: 22,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: '#FFF7E0',
+  },
 });

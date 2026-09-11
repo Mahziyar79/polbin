@@ -2,6 +2,9 @@ import { parseSms } from '../src/services/smsParser';
 import { FAKE_SMS_INBOX } from '../src/data/fakeSmsInbox';
 import { toJalali } from '../src/utils/jalali';
 
+/** خط جدید — رشته‌ی چندخطی داخل تست، escape شدنش در ابزارهای مختلف قابل اعتماد نیست. */
+const NL = String.fromCharCode(10);
+
 describe('parseSms', () => {
   it('مبلغ خرید را می‌خواند، نه شماره‌ی حسابِ چسبیده به برچسب', () => {
     const result = parseSms(`بانک رفاه
@@ -23,6 +26,41 @@ describe('parseSms', () => {
 
     // «رفاه» اینجا اسم بانک است نه فروشگاه زنجیره‌ای.
     expect(result.categoryId).not.toBe('grocery');
+  });
+
+  it('نام بانک را داخل واژه‌های دیگر پیدا نمی‌کند', () => {
+    // «موجودی» به «دی»، «عملیات» به «ملی» و «شهریور» به «شهر» ختم می‌شوند.
+    const result = parseSms(
+      'پرداخت 1,190,000 ریال بابت خرید در شهریور انجام شد. عملیات موفق. موجودی: 4,621,300',
+    );
+
+    expect(result.bank).toBeNull();
+  });
+
+  it('نام بانک را به‌عنوان واژه‌ی مستقل، با و بدون «بانک»، می‌خواند', () => {
+    expect(parseSms('بانک ملی خرید 500,000 ریال مانده 1,000,000').bank).toBe('بانک ملی');
+    expect(parseSms('ملی: خرید 500,000 ریال مانده 1,000,000').bank).toBe('بانک ملی');
+    expect(parseSms('بلوبانک برداشت 500,000 ریال مانده 1,000,000').bank).toBe('بلوبانک');
+  });
+
+  it('پیامک واقعی بلوبانک: نام کوتاه، تاریخ نقطه‌دار، ساعت در خط جدا', () => {
+    const result = parseSms(
+      ['بلو', 'برداشت پول', 'مهزیار عزیز، 20,000,000 ریال از حساب شما پرید.', 'موجودی: 528,926,412 ریال', '۸:۳۴', '۱۴۰۵.۰۶.۱۸'].join(NL),
+    );
+
+    expect(result.bank).toBe('بلوبانک');
+    expect(result.amount).toBe(2_000_000);
+    expect(result.type).toBe('debit');
+    // ۵۲٬۸۹۲٬۶۴۱٫۲ تومان گرد می‌شود — تومان اعشار ندارد.
+    expect(result.balance).toBe(52_892_641);
+    // بلو شماره‌ی کارت یا حساب نمی‌دهد؛ حساب فقط با نام بانک شناخته می‌شود.
+    expect(result.cardLast4).toBeNull();
+    expect(result.accountLast4).toBeNull();
+
+    const date = new Date(result.date);
+    expect(toJalali(date)).toMatchObject({ jy: 1405, jm: 6, jd: 18 });
+    expect(date.getHours()).toBe(8);
+    expect(date.getMinutes()).toBe(34);
   });
 
   it('مانده را به‌عنوان مبلغ برنمی‌دارد', () => {

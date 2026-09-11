@@ -8,8 +8,15 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { Text } from '../components/Text';
 import { RootStackParamList } from '../navigation/types';
 import { backupFileName, buildBackup, parseBackup } from '../services/backup';
-import { isAvailable, pickTextFile, printHtml, saveAndShare } from '../services/deviceFiles';
+import {
+  isAvailable,
+  pickTextFile,
+  printHtml,
+  saveAndShare,
+  saveAndShareBytes,
+} from '../services/deviceFiles';
 import { buildReportHtml } from '../services/reportHtml';
+import { buildTransactionsXlsx, xlsxFileName } from '../services/xlsx';
 import { useBudget } from '../state/BudgetContext';
 import { useInstallments } from '../state/InstallmentsContext';
 import { useCategories } from '../state/CategoriesContext';
@@ -19,16 +26,18 @@ import { toFaDigits } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Backup'>;
 
+type Job = 'export' | 'import' | 'pdf' | 'xlsx';
+
 export function BackupScreen({ navigation }: Props) {
   const { transactions, replaceAll } = useTransactions();
   const { categories, customCategories, replaceCustom } = useCategories();
   const { monthly, setMonthly, clear: clearBudget } = useBudget();
   const { installments, replaceAll: replaceInstallments } = useInstallments();
 
-  const [busy, setBusy] = useState<'export' | 'import' | 'pdf' | null>(null);
+  const [busy, setBusy] = useState<Job | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function run(kind: 'export' | 'import' | 'pdf', action: () => Promise<void>) {
+  async function run(kind: Job, action: () => Promise<void>) {
     setBusy(kind);
     setMessage(null);
     try {
@@ -49,6 +58,16 @@ export function BackupScreen({ navigation }: Props) {
         installments,
       });
       await saveAndShare(backupFileName(), 'application/json', json);
+    });
+
+  const handleXlsx = () =>
+    run('xlsx', async () => {
+      const bytes = buildTransactionsXlsx(transactions, categories);
+      await saveAndShareBytes(
+        xlsxFileName(),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        bytes,
+      );
     });
 
   const handlePdf = () =>
@@ -137,6 +156,21 @@ export function BackupScreen({ navigation }: Props) {
               {busy === 'import' ? 'در حال خواندن فایل…' : 'بازگردانی از فایل پشتیبان'}
             </Text>
           </TouchableOpacity>
+        </Card>
+
+        <Card style={styles.card}>
+          <Text style={styles.cardTitle}>خروجی اکسل</Text>
+          <Text style={styles.cardBody}>
+            همه‌ی تراکنش‌ها در یک فایل xlsx: تاریخ شمسی، مبلغ، فروشگاه، دسته و بانک. مبلغ‌ها عدد
+            واقعی‌اند تا بشود رویشان جمع زد. متن پیامک‌ها داخلش نیست.
+          </Text>
+          <AppButton
+            title="گرفتن فایل اکسل"
+            onPress={handleXlsx}
+            variant="secondary"
+            loading={busy === 'xlsx'}
+            disabled={busy !== null || transactions.length === 0}
+          />
         </Card>
 
         <Card style={styles.card}>
