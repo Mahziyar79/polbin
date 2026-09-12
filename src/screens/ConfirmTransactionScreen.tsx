@@ -61,6 +61,7 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         categoryId: result.categoryId,
         type: result.type,
         bank: result.bank,
+        date: result.date,
       });
     });
     return () => {
@@ -79,7 +80,7 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         amount: form.amount,
         merchant: form.merchant.trim(),
         categoryId: form.categoryId,
-        date: parsed.date,
+        date: form.date.toISOString(),
         bank: form.bank ?? undefined,
         cardLast4: parsed.cardLast4 ?? undefined,
         accountLast4: parsed.accountLast4 ?? undefined,

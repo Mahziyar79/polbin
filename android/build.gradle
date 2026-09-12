@@ -19,3 +19,17 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// آینه‌های Google Maven.
+//
+// dl.google.com از این شبکه گاهی برای همه‌ی آدرس‌ها ۴۰۴ می‌دهد — حتی
+// artifactهایی که قطعاً وجود دارند. تا وقتی همه‌چیز در کش ~/.gradle بود دیده
+// نمی‌شد؛ اولین وابستگی تازه (androidx.biometric) بیلد را شکست. Gradle
+// مخزن‌ها را به ترتیب امتحان می‌کند، پس google() اول می‌ماند و این‌ها فقط وقتی
+// به کار می‌افتند که آن جواب ندهد.
+allprojects {
+    repositories {
+        maven { url "https://maven.myket.ir" }
+        maven { url "https://maven.aliyun.com/repository/google" }
+    }
+}

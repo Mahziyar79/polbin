@@ -33,6 +33,7 @@ export function EditTransactionScreen({ navigation, route }: Props) {
           categoryId: transaction.categoryId,
           type: transaction.type,
           bank: transaction.bank ?? null,
+          date: transaction.date,
         }
       : undefined,
   );
@@ -62,6 +63,7 @@ export function EditTransactionScreen({ navigation, route }: Props) {
         merchant: form.merchant.trim(),
         categoryId: form.categoryId,
         bank: form.bank ?? undefined,
+        date: form.date.toISOString(),
         type: form.type,
       });
       navigation.goBack();

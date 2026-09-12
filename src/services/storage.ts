@@ -18,6 +18,7 @@ export const STORAGE_KEYS = {
   onboardingSeen: 'onboarding.seen.v1',
   budget: 'budget.v1',
   installments: 'installments.v1',
+  lock: 'lock.v1',
 } as const;
 
 /**

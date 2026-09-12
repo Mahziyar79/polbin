@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { colors, radius, spacing } from '../theme';
-import { toFaDigits } from '../utils/format';
+import { toEnDigits, toFaDigits } from '../utils/format';
 import {
   JALALI_MONTHS,
   JALALI_WEEK_HEADERS,
@@ -11,7 +12,9 @@ import {
   toGregorian,
   toJalali,
 } from '../utils/jalali';
+import { AppButton } from './AppButton';
 import { Text } from './Text';
+import { TextInput } from './TextInput';
 
 interface Props {
   visible: boolean;
@@ -20,6 +23,22 @@ interface Props {
   onSelect: (date: Date) => void;
   onClose: () => void;
   title?: string;
+  /**
+   * ساعت و دقیقه هم پرسیده شود. در این حالت لمس روز فوراً نمی‌بندد؛ کاربر
+   * ساعت را هم می‌گذارد و «تایید» می‌زند. بدون آن، همان انتخابگر روز است.
+   */
+  withTime?: boolean;
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+/** «۰۹» → ۹؛ بیشتر از سقف، همان سقف. */
+function clampDigits(text: string, max: number): number {
+  const n = Number(toEnDigits(text).replace(/[^\d]/g, ''));
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(max, n);
 }
 
 /**
@@ -28,10 +47,28 @@ interface Props {
  * جدا از `CalendarScreen` است چون آن یکی صفحه‌ی گزارش است و تراکنش‌های هر روز
  * را نشان می‌دهد؛ این فقط یک انتخابگر است و در فرم‌ها استفاده می‌شود.
  */
-export function JalaliDatePicker({ visible, value, onSelect, onClose, title }: Props) {
+export function JalaliDatePicker({ visible, value, onSelect, onClose, title, withTime }: Props) {
   const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
   const initial = toJalali(value);
   const [month, setMonth] = useState({ jy: initial.jy, jm: initial.jm });
+
+  // پیش‌نویس فقط در حالت ساعت‌دار معنا دارد: روز و ساعت جدا انتخاب می‌شوند و
+  // با «تایید» یک‌جا برمی‌گردند. با هر بار باز شدن از مقدار فعلی شروع می‌کند.
+  const [draft, setDraft] = useState<Date>(value);
+  const [hourText, setHourText] = useState(toFaDigits(pad2(value.getHours())));
+  const [minuteText, setMinuteText] = useState(toFaDigits(pad2(value.getMinutes())));
+
+  useEffect(() => {
+    if (!visible) return;
+    const j = toJalali(value);
+    setMonth({ jy: j.jy, jm: j.jm });
+    setDraft(value);
+    setHourText(toFaDigits(pad2(value.getHours())));
+    setMinuteText(toFaDigits(pad2(value.getMinutes())));
+    // فقط لحظه‌ی باز شدن؛ تغییر `value` وسط انتخاب نباید پیش‌نویس را بپراند.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   const grid = useMemo(() => {
     const first = toGregorian(month.jy, month.jm, 1);
@@ -55,11 +92,24 @@ export function JalaliDatePicker({ visible, value, onSelect, onClose, title }: P
 
   function pick(day: number) {
     const date = toGregorian(month.jy, month.jm, day);
-    date.setHours(0, 0, 0, 0);
+
+    if (!withTime) {
+      date.setHours(0, 0, 0, 0);
+      onSelect(date);
+      return;
+    }
+
+    date.setHours(draft.getHours(), draft.getMinutes(), 0, 0);
+    setDraft(date);
+  }
+
+  function confirm() {
+    const date = new Date(draft);
+    date.setHours(clampDigits(hourText, 23), clampDigits(minuteText, 59), 0, 0);
     onSelect(date);
   }
 
-  const selected = toJalali(value);
+  const selected = toJalali(withTime ? draft : value);
 
   return (
     <Modal
@@ -71,7 +121,11 @@ export function JalaliDatePicker({ visible, value, onSelect, onClose, title }: P
       <View style={styles.layout}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="بستن" />
 
-        <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]}>
+        <View
+          style={[
+            styles.sheet,
+            { paddingBottom: spacing.lg + insets.bottom, marginBottom: keyboardHeight },
+          ]}>
           <Text style={styles.title}>{title ?? 'انتخاب تاریخ'}</Text>
 
           <View style={styles.header}>
@@ -122,6 +176,38 @@ export function JalaliDatePicker({ visible, value, onSelect, onClose, title }: P
               <View key={`tail-${index}`} style={styles.cell} />
             ))}
           </View>
+
+          {withTime ? (
+            <>
+              <View style={styles.timeRow}>
+                <Text style={styles.timeLabel}>ساعت</Text>
+                {/* در ردیف راست‌به‌چپ، ساعت سمت راست و دقیقه سمت چپ می‌نشیند — همان «۱۰:۱۵». */}
+                <TextInput
+                  value={hourText}
+                  onChangeText={text => setHourText(toFaDigits(toEnDigits(text).replace(/[^\d]/g, '').slice(0, 2)))}
+                  onBlur={() => setHourText(toFaDigits(pad2(clampDigits(hourText, 23))))}
+                  keyboardType="number-pad"
+                  selectTextOnFocus
+                  maxLength={2}
+                  style={styles.timeInput}
+                  textAlign="center"
+                />
+                <Text style={styles.timeColon}>:</Text>
+                <TextInput
+                  value={minuteText}
+                  onChangeText={text => setMinuteText(toFaDigits(toEnDigits(text).replace(/[^\d]/g, '').slice(0, 2)))}
+                  onBlur={() => setMinuteText(toFaDigits(pad2(clampDigits(minuteText, 59))))}
+                  keyboardType="number-pad"
+                  selectTextOnFocus
+                  maxLength={2}
+                  style={styles.timeInput}
+                  textAlign="center"
+                />
+              </View>
+
+              <AppButton title="تایید" onPress={confirm} />
+            </>
+          ) : null}
         </View>
       </View>
     </Modal>
@@ -172,4 +258,27 @@ const styles = StyleSheet.create({
   cellActive: { backgroundColor: colors.primary },
   dayText: { fontSize: 14, color: colors.text },
   dayTextActive: { color: '#FFFFFF', fontWeight: '800' },
+
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginBottom: spacing.xs,
+  },
+  timeLabel: { flex: 1, fontSize: 13, color: colors.textMuted },
+  timeInput: {
+    width: 64,
+    height: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  timeColon: { fontSize: 20, fontWeight: '800', color: colors.textMuted },
 });

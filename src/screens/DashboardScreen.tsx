@@ -428,7 +428,8 @@ const styles = StyleSheet.create({
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.md },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   legendDot: { width: 9, height: 9, borderRadius: radius.pill },
-  legendText: { fontSize: 11, color: colors.textMuted },
+  // flexShrink لازم است: متن داخل ردیف بدون آن، در راست‌به‌چپ دُمش را می‌اندازد.
+  legendText: { flexShrink: 1, fontSize: 11, color: colors.textMuted },
   section: { gap: spacing.md },
   sectionEmpty: {
     fontSize: 13,

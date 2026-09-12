@@ -32,11 +32,11 @@ export function AddTransactionScreen({ navigation }: Props) {
     () =>
       form.amount > 0
         ? findDuplicate(
-            { amount: form.amount, type: form.type, date: new Date().toISOString(), bank: form.bank },
+            { amount: form.amount, type: form.type, date: form.date.toISOString(), bank: form.bank },
             fromSms,
           )
         : null,
-    [form.amount, form.type, form.bank, fromSms],
+    [form.amount, form.type, form.bank, form.date, fromSms],
   );
 
   async function handleSave() {
@@ -49,7 +49,7 @@ export function AddTransactionScreen({ navigation }: Props) {
         merchant: form.merchant.trim(),
         categoryId: form.categoryId,
         bank: form.bank ?? undefined,
-        date: new Date().toISOString(),
+        date: form.date.toISOString(),
         type: form.type,
       });
       navigation.navigate('Dashboard');
@@ -75,7 +75,7 @@ export function AddTransactionScreen({ navigation }: Props) {
 
         {lookalike ? (
           <Text style={styles.lookalike}>
-            {`امروز یک ${form.type === 'debit' ? 'خرج' : 'درآمد'} با همین مبلغ از پیامک بانک ثبت شده: ${describeTransaction(lookalike.existing)}. اگر همان است، دوباره ثبتش نکن.`}
+            {`همان روز یک ${form.type === 'debit' ? 'خرج' : 'درآمد'} با همین مبلغ از پیامک بانک ثبت شده: ${describeTransaction(lookalike.existing)}. اگر همان است، دوباره ثبتش نکن.`}
           </Text>
         ) : null}
       </ScrollView>

@@ -12,7 +12,8 @@ const ITEMS: Array<{ route: keyof RootStackParamList; emoji: string; label: stri
     { route: 'Calendar', emoji: '📅', label: 'تقویم', hint: 'خرج هر روز ماه' },
     { route: 'Installments', emoji: '🧾', label: 'قسط‌ها', hint: 'وام‌ها و سررسیدها' },
     { route: 'Categories', emoji: '🏷️', label: 'دسته‌بندی‌ها', hint: 'دیدن و ساختن دسته' },
-    { route: 'Backup', emoji: '💾', label: 'پشتیبان و خروجی', hint: 'فایل JSON و گزارش PDF' },
+    { route: 'Backup', emoji: '💾', label: 'پشتیبان و خروجی', hint: 'فایل JSON، اکسل و PDF' },
+    { route: 'LockSettings', emoji: '🔒', label: 'قفل اپ', hint: 'رمز و اثر انگشت' },
     { route: 'About', emoji: 'ℹ️', label: 'درباره‌ی پول‌بین', hint: 'قابلیت‌ها و حریم خصوصی' },
   ];
 
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.md,
+    padding: spacing.xs,
     borderRadius: radius.md,
   },
   itemPressed: { backgroundColor: colors.surfaceAlt },

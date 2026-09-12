@@ -4,8 +4,9 @@ import { BANKS, findBank } from '../data/banks';
 import { useCategories } from '../state/CategoriesContext';
 import { TransactionForm } from '../hooks/useTransactionForm';
 import { colors, radius, spacing } from '../theme';
-import { formatToman } from '../utils/format';
+import { formatJalaliDate, formatTime, formatToman } from '../utils/format';
 import { BankMark } from './BankMark';
+import { JalaliDatePicker } from './JalaliDatePicker';
 import { Card } from './Card';
 import { PickerSheet } from './PickerSheet';
 import { Text } from './Text';
@@ -43,6 +44,7 @@ export function TransactionFormFields({
   const categories = categoriesOfKind(form.type);
 
   const [bankPickerOpen, setBankPickerOpen] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const selectedBank = findBank(form.bank);
 
   return (
@@ -110,6 +112,15 @@ export function TransactionFormFields({
           <Text style={styles.bankChevron}>▾</Text>
         </TouchableOpacity>
 
+        <Text style={[styles.fieldLabel, styles.spacedLabel]}>تاریخ و ساعت</Text>
+        <TouchableOpacity onPress={() => setDatePickerOpen(true)} style={styles.bankRow}>
+          <Text style={styles.dateEmoji}>📅</Text>
+          <Text style={styles.bankLabel} numberOfLines={1}>
+            {`${formatJalaliDate(form.date.toISOString())}، ${formatTime(form.date.toISOString())}`}
+          </Text>
+          <Text style={styles.bankChevron}>▾</Text>
+        </TouchableOpacity>
+
         <Text style={[styles.fieldLabel, styles.spacedLabel]}>دسته‌بندی</Text>
         <View style={styles.chips}>
           {categories.map(category => {
@@ -157,6 +168,18 @@ export function TransactionFormFields({
           setBankPickerOpen(false);
         }}
         onClose={() => setBankPickerOpen(false)}
+      />
+
+      <JalaliDatePicker
+        visible={datePickerOpen}
+        value={form.date}
+        title="تاریخ و ساعت تراکنش"
+        withTime
+        onSelect={date => {
+          form.setDate(date);
+          setDatePickerOpen(false);
+        }}
+        onClose={() => setDatePickerOpen(false)}
       />
     </>
   );
@@ -217,6 +240,7 @@ const styles = StyleSheet.create({
   },
   bankLabel: { flex: 1, fontSize: 14, color: colors.text },
   bankChevron: { fontSize: 12, color: colors.textMuted },
+  dateEmoji: { fontSize: 18 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
     paddingHorizontal: spacing.md,

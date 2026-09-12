@@ -12,4 +12,5 @@ export type RootStackParamList = {
   Installments: undefined;
   AddInstallment: { id?: string };
   Backup: undefined;
+  LockSettings: undefined;
 };

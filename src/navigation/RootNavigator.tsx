@@ -16,6 +16,7 @@ import { ConfirmTransactionScreen } from '../screens/ConfirmTransactionScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { EditTransactionScreen } from '../screens/EditTransactionScreen';
 import { InstallmentsScreen } from '../screens/InstallmentsScreen';
+import { LockSettingsScreen } from '../screens/LockSettingsScreen';
 import { TransactionsScreen } from '../screens/TransactionsScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { subscribeToSharedText } from '../services/shareIntent';
@@ -142,6 +143,11 @@ export function RootNavigator({ initialSharedText }: { initialSharedText?: strin
         <Stack.Screen
           name="AddInstallment"
           component={AddInstallmentScreen}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="LockSettings"
+          component={LockSettingsScreen}
           options={{ animation: 'slide_from_bottom' }}
         />
         <Stack.Screen
