@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.xs,
+    padding: spacing.md,
     borderRadius: radius.md,
   },
   itemPressed: { backgroundColor: colors.surfaceAlt },
