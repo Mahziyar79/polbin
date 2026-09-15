@@ -2,7 +2,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { AppButton } from '../components/AppButton';
-import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { Card } from '../components/Card';
 import { FormScreenHeader } from '../components/FormScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -28,7 +27,6 @@ export function CategoriesScreen({ navigation }: Props) {
 
   const [kind, setKind] = useState<TransactionType>('debit');
   const { transactions, reassignCategory } = useTransactions();
-  const keyboardHeight = useKeyboardHeight();
 
   const [label, setLabel] = useState('');
   const [emoji, setEmoji] = useState(CATEGORY_EMOJI_CHOICES[0]);
@@ -77,6 +75,7 @@ export function CategoriesScreen({ navigation }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <FormScreenHeader
+          onBack={() => navigation.goBack()}
           title="دسته‌بندی‌ها"
           subtitle="همه‌ی دسته‌های خرج و درآمد. دسته‌های پیش‌فرض چون پارسر پیامک به آن‌ها تکیه دارد حذف نمی‌شوند."
         />
@@ -194,10 +193,6 @@ export function CategoriesScreen({ navigation }: Props) {
         </Card>
       </ScrollView>
 
-      {/* مثل FormFooter بالا می‌آید — این صفحه ورودی نام دسته دارد. */}
-      <View style={[styles.footer, { marginBottom: keyboardHeight }]}>
-        <AppButton title="بستن" onPress={() => navigation.goBack()} variant="secondary" />
-      </View>
     </ScreenContainer>
   );
 }
@@ -276,10 +271,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerSoft,
   },
   deleteText: { fontSize: 12, color: colors.danger, fontWeight: '700' },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
 });

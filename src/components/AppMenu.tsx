@@ -12,8 +12,8 @@ const ITEMS: Array<{ route: keyof RootStackParamList; emoji: string; label: stri
     { route: 'Calendar', emoji: '📅', label: 'تقویم', hint: 'خرج هر روز ماه' },
     { route: 'Installments', emoji: '🧾', label: 'قسط‌ها', hint: 'وام‌ها و سررسیدها' },
     { route: 'Categories', emoji: '🏷️', label: 'دسته‌بندی‌ها', hint: 'دیدن و ساختن دسته' },
-    { route: 'Backup', emoji: '💾', label: 'پشتیبان و خروجی', hint: 'فایل JSON، اکسل و PDF' },
-    { route: 'LockSettings', emoji: '🔒', label: 'قفل اپ', hint: 'رمز و اثر انگشت' },
+    { route: 'Backup', emoji: '💾', label: 'پشتیبان‌گیری و خروجی', hint: 'فایل JSON، اکسل و PDF' },
+    { route: 'LockSettings', emoji: '🔒', label: 'امنیت', hint: 'رمز و اثر انگشت' },
     { route: 'About', emoji: 'ℹ️', label: 'درباره‌ی پول‌بین', hint: 'قابلیت‌ها و حریم خصوصی' },
   ];
 
@@ -31,8 +31,9 @@ interface Props {
  * سنگین برای منویی که پنج آیتم دارد. `Modal` دکمه‌ی بازگشت اندروید را هم
  * خودش مدیریت می‌کند.
  *
- * چون کل اپ RTL است، در یک ردیف، فرزند اول سمت راست می‌نشیند. پس پس‌زمینه
- * اول می‌آید و پنل دوم، تا پنل به لبه‌ی چپ بچسبد.
+ * چون کل اپ RTL است، در یک ردیف، فرزند اول سمت راست می‌نشیند. پنل اول می‌آید و
+ * پس‌زمینه دوم، تا پنل به لبه‌ی راست بچسبد — همان سمتی که تیتر و متن از آن شروع
+ * می‌شوند.
  */
 export function AppMenu({ visible, onClose, onSelect }: Props) {
   const insets = useSafeAreaInsets();
@@ -45,8 +46,6 @@ export function AppMenu({ visible, onClose, onSelect }: Props) {
       onRequestClose={onClose}
       statusBarTranslucent>
       <View style={styles.layout}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="بستن منو" />
-
         <View style={styles.panel}>
           <View style={styles.header}>
             <Text style={styles.brand}>پول‌بین</Text>
@@ -69,6 +68,8 @@ export function AppMenu({ visible, onClose, onSelect }: Props) {
             ))}
           </ScrollView>
         </View>
+
+        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="بستن منو" />
       </View>
     </Modal>
   );

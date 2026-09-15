@@ -5,18 +5,19 @@ import { AppButton } from '../components/AppButton';
 import { BankMark } from '../components/BankMark';
 import { Card } from '../components/Card';
 import { FormScreenHeader } from '../components/FormScreenHeader';
+import { JalaliDatePicker } from '../components/JalaliDatePicker';
 import { PickerSheet } from '../components/PickerSheet';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Text } from '../components/Text';
 import { TransactionRow } from '../components/TransactionRow';
 import { RootStackParamList } from '../navigation/types';
 import { findBank } from '../data/banks';
-import { balanceOf } from '../services/analytics';
+import { balanceOf, withinJalaliMonth, withinLastDays } from '../services/analytics';
 import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
 import { CategoryId, TransactionType } from '../types';
-import { formatToman, toFaDigits } from '../utils/format';
+import { formatJalaliDate, formatToman, toFaDigits } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Transactions'>;
 
@@ -31,8 +32,32 @@ type FilterId = (typeof FILTERS)[number]['id'];
 /** هر بار این تعداد ردیف بیشتر نشان داده می‌شود. */
 const PAGE_SIZE = 20;
 
-/** شناسه‌ی گزینه‌ی «همه» در هر دو فهرست انتخاب. */
+/** شناسه‌ی گزینه‌ی «همه» در هر سه فهرست انتخاب. */
 const ALL = '__all__';
+
+/** بازه‌های آماده‌ی تاریخ؛ «دلخواه» دو تاریخ از کاربر می‌گیرد. */
+const DATE_PRESETS = [
+  { id: ALL, label: 'همه‌ی تاریخ‌ها' },
+  { id: 'today', label: 'امروز' },
+  { id: 'week', label: '۷ روز گذشته' },
+  { id: 'month', label: 'این ماه' },
+  { id: 'lastMonth', label: 'ماه قبل' },
+  { id: 'custom', label: 'بازه‌ی دلخواه…' },
+] as const;
+
+type DatePresetId = (typeof DATE_PRESETS)[number]['id'];
+
+function startOfDay(date: Date): Date {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function endOfDay(date: Date): Date {
+  const copy = new Date(date);
+  copy.setHours(23, 59, 59, 999);
+  return copy;
+}
 
 /**
  * فهرست کامل تراکنش‌ها.
@@ -41,19 +66,48 @@ const ALL = '__all__';
  * است چون این لیست با گذشت ماه‌ها فقط بزرگ‌تر می‌شود و رندر کردن یک‌باره‌ی
  * هزار ردیف، باز شدن صفحه را کند می‌کند.
  */
-export function TransactionsScreen({ navigation }: Props) {
+export function TransactionsScreen({ navigation, route }: Props) {
   const { transactions } = useTransactions();
   const { resolve } = useCategories();
 
-  const [filter, setFilter] = useState<FilterId>('all');
-  const [categoryId, setCategoryId] = useState<CategoryId | null>(null);
+  // فیلتر اولیه از داشبورد می‌آید: لمس «رستوران و کافه» باید همان دسته را نشان بدهد.
+  const [filter, setFilter] = useState<FilterId>(route.params?.type ?? 'all');
+  const [categoryId, setCategoryId] = useState<CategoryId | null>(route.params?.categoryId ?? null);
   const [bankName, setBankName] = useState<string | null>(null);
-  const [openPicker, setOpenPicker] = useState<'category' | 'bank' | null>(null);
+  const [openPicker, setOpenPicker] = useState<'category' | 'bank' | 'date' | null>(null);
+  const [datePreset, setDatePreset] = useState<DatePresetId>(ALL);
+  const [customFrom, setCustomFrom] = useState<Date>(() => startOfDay(new Date()));
+  const [customTo, setCustomTo] = useState<Date>(() => endOfDay(new Date()));
+  const [customPicker, setCustomPicker] = useState<'from' | 'to' | null>(null);
   const [shown, setShown] = useState(PAGE_SIZE);
 
+  /** اول بازه‌ی زمانی، تا شمارش دسته‌ها و بانک‌ها هم با همان بازه بخواند. */
+  const byDate = useMemo(() => {
+    switch (datePreset) {
+      case 'today':
+        return withinLastDays(transactions, 1);
+      case 'week':
+        return withinLastDays(transactions, 7);
+      case 'month':
+        return withinJalaliMonth(transactions, 0);
+      case 'lastMonth':
+        return withinJalaliMonth(transactions, 1);
+      case 'custom': {
+        const from = startOfDay(customFrom).getTime();
+        const to = endOfDay(customTo).getTime();
+        return transactions.filter(tx => {
+          const time = new Date(tx.date).getTime();
+          return time >= from && time <= to;
+        });
+      }
+      default:
+        return transactions;
+    }
+  }, [transactions, datePreset, customFrom, customTo]);
+
   const byType = useMemo(
-    () => (filter === 'all' ? transactions : transactions.filter(tx => tx.type === filter)),
-    [transactions, filter],
+    () => (filter === 'all' ? byDate : byDate.filter(tx => tx.type === filter)),
+    [byDate, filter],
   );
 
   /**
@@ -130,6 +184,19 @@ export function TransactionsScreen({ navigation }: Props) {
     setOpenPicker(null);
   }
 
+  function chooseDate(id: string) {
+    setDatePreset(id as DatePresetId);
+    setShown(PAGE_SIZE);
+    setOpenPicker(null);
+    // بازه‌ی دلخواه بلافاصله «از» را می‌پرسد؛ بدون این، کاربر باید حدس بزند کجا بزند.
+    if (id === 'custom') setCustomPicker('from');
+  }
+
+  const dateLabel =
+    datePreset === 'custom'
+      ? `${formatJalaliDate(customFrom.toISOString())} تا ${formatJalaliDate(customTo.toISOString())}`
+      : DATE_PRESETS.find(preset => preset.id === datePreset)?.label ?? '';
+
   return (
     <ScreenContainer flush>
       <FlatList
@@ -139,6 +206,7 @@ export function TransactionsScreen({ navigation }: Props) {
         ListHeaderComponent={
           <View style={styles.header}>
             <FormScreenHeader
+              onBack={() => navigation.goBack()}
               title="تراکنش‌ها"
               subtitle="همه‌ی خرج‌ها و درآمدها، تازه‌ترین اول. برای ویرایش یا حذف روی هرکدام بزن."
             />
@@ -158,6 +226,34 @@ export function TransactionsScreen({ navigation }: Props) {
                 );
               })}
             </View>
+
+            <TouchableOpacity
+              onPress={() => setOpenPicker('date')}
+              style={[styles.dropdown, datePreset !== ALL ? styles.dropdownActive : null]}
+              accessibilityRole="button">
+              <Text style={styles.allEmoji}>📅</Text>
+              <Text style={styles.dropdownLabel} numberOfLines={1}>
+                {dateLabel}
+              </Text>
+              <Text style={styles.dropdownChevron}>▾</Text>
+            </TouchableOpacity>
+
+            {datePreset === 'custom' ? (
+              <View style={styles.dropdownRow}>
+                <TouchableOpacity onPress={() => setCustomPicker('from')} style={styles.dropdown}>
+                  <Text style={styles.dropdownLabel} numberOfLines={1}>
+                    {`از ${formatJalaliDate(customFrom.toISOString())}`}
+                  </Text>
+                  <Text style={styles.dropdownChevron}>▾</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setCustomPicker('to')} style={styles.dropdown}>
+                  <Text style={styles.dropdownLabel} numberOfLines={1}>
+                    {`تا ${formatJalaliDate(customTo.toISOString())}`}
+                  </Text>
+                  <Text style={styles.dropdownChevron}>▾</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
 
             <View style={styles.dropdownRow}>
               {categoryOptions.length > 0 ? (
@@ -206,11 +302,13 @@ export function TransactionsScreen({ navigation }: Props) {
         )}
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {filter === 'credit'
-              ? 'هنوز درآمدی ثبت نشده.'
-              : filter === 'debit'
-                ? 'هنوز خرجی ثبت نشده.'
-                : 'هنوز تراکنشی ثبت نشده.'}
+            {datePreset !== ALL || categoryId || bankName
+              ? 'با این فیلترها تراکنشی پیدا نشد.'
+              : filter === 'credit'
+                ? 'هنوز درآمدی ثبت نشده.'
+                : filter === 'debit'
+                  ? 'هنوز خرجی ثبت نشده.'
+                  : 'هنوز تراکنشی ثبت نشده.'}
           </Text>
         }
         ListFooterComponent={
@@ -265,9 +363,34 @@ export function TransactionsScreen({ navigation }: Props) {
         onClose={() => setOpenPicker(null)}
       />
 
-      <View style={styles.footer}>
-        <AppButton title="بستن" onPress={() => navigation.goBack()} variant="ghost" />
-      </View>
+      <PickerSheet
+        visible={openPicker === 'date'}
+        title="بازه‌ی زمانی"
+        selectedId={datePreset}
+        options={DATE_PRESETS.map(preset => ({ id: preset.id, label: preset.label }))}
+        onSelect={chooseDate}
+        onClose={() => setOpenPicker(null)}
+      />
+
+      <JalaliDatePicker
+        visible={customPicker !== null}
+        value={customPicker === 'to' ? customTo : customFrom}
+        title={customPicker === 'to' ? 'تا تاریخ' : 'از تاریخ'}
+        onSelect={date => {
+          if (customPicker === 'to') {
+            setCustomTo(endOfDay(date));
+            setCustomPicker(null);
+          } else {
+            setCustomFrom(startOfDay(date));
+            // اگر «تا» جلوتر از «از» نباشد، همان روز می‌شود؛ بعد «تا» پرسیده می‌شود.
+            if (customTo.getTime() < endOfDay(date).getTime()) setCustomTo(endOfDay(date));
+            setCustomPicker('to');
+          }
+          setShown(PAGE_SIZE);
+        }}
+        onClose={() => setCustomPicker(null)}
+      />
+
     </ScreenContainer>
   );
 }
@@ -300,6 +423,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
+  dropdownActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   dropdownLabel: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.text },
   dropdownChevron: { fontSize: 12, color: colors.textMuted },
 
@@ -314,10 +438,4 @@ const styles = StyleSheet.create({
   empty: { fontSize: 14, color: colors.textFaint, textAlign: 'center', paddingVertical: spacing.xxl },
   more: { gap: spacing.sm, marginTop: spacing.lg },
   moreHint: { fontSize: 12, color: colors.textFaint, textAlign: 'center' },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
 });

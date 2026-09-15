@@ -4,7 +4,8 @@ export type RootStackParamList = {
   ConfirmTransaction: { rawSms: string };
   AddTransaction: undefined;
   EditTransaction: { id: string };
-  Transactions: undefined;
+  /** از داشبورد با لمس یک دسته می‌آید؛ فیلتر اولیه‌ی صفحه است. */
+  Transactions: { categoryId?: string; type?: 'debit' | 'credit' } | undefined;
   About: undefined;
   Budget: undefined;
   Categories: undefined;

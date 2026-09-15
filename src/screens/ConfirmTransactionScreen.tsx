@@ -1,6 +1,14 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Share,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Card } from '../components/Card';
 import { ConfidenceBar } from '../components/ConfidenceBar';
 import { DuplicateCard } from '../components/DuplicateCard';
@@ -12,6 +20,7 @@ import { useTransactionForm } from '../hooks/useTransactionForm';
 import { RootStackParamList } from '../navigation/types';
 import { DuplicateMatch, findDuplicate } from '../services/duplicates';
 import { parseSmsRemote } from '../services/fakeApi';
+import { buildSmsReport } from '../services/smsReport';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, spacing } from '../theme';
 import { ParsedSms } from '../types';
@@ -96,6 +105,31 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
     }
   }
 
+  /**
+   * گزارش پیامکی که غلط خوانده شده — تنها راه رسیدن شکل پیامک بانک‌های دیگر
+   * به ما، چون سرور نداریم. هیچ‌چیز خودکار نمی‌رود: کاربر می‌بیند چه چیزی در
+   * متن هست، تایید می‌کند، و خودش مقصد را در منوی هم‌رسانی انتخاب می‌کند.
+   */
+  function handleReport() {
+    if (!parsed) return;
+
+    Alert.alert(
+      'گزارش پیامک',
+      'متن پیامک همراه با چیزی که پول‌بین از آن فهمیده، در منوی هم‌رسانی باز می‌شود تا برای ما بفرستی. شماره‌ی حساب و کارت پوشانده می‌شوند؛ مبلغ و مانده می‌مانند چون بدون آن‌ها نمی‌شود اشتباه را پیدا کرد.',
+      [
+        { text: 'بازگشت', style: 'cancel' },
+        {
+          text: 'ادامه',
+          onPress: () => {
+            Share.share({ message: buildSmsReport(rawSms, parsed) }).catch(() => {
+              // کاربر منوی هم‌رسانی را بست؛ کاری لازم نیست.
+            });
+          },
+        },
+      ],
+    );
+  }
+
   if (!parsed) {
     return (
       <ScreenContainer>
@@ -147,6 +181,10 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
             <Text style={styles.rawText}>{rawSms}</Text>
           </Card>
         ) : null}
+
+        <TouchableOpacity onPress={handleReport} style={styles.reportLink}>
+          <Text style={styles.reportText}>این پیامک درست خوانده نشد؟ برای ما بفرست</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       <FormFooter
@@ -170,4 +208,6 @@ const styles = StyleSheet.create({
   rawToggleText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   rawCard: { backgroundColor: colors.surfaceAlt },
   rawText: { fontSize: 13, color: colors.textMuted, lineHeight: 24 },
+  reportLink: { alignItems: 'center', paddingVertical: spacing.sm },
+  reportText: { color: colors.textMuted, fontSize: 12, textDecorationLine: 'underline' },
 });

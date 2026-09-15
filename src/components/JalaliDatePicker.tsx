@@ -181,18 +181,11 @@ export function JalaliDatePicker({ visible, value, onSelect, onClose, title, wit
             <>
               <View style={styles.timeRow}>
                 <Text style={styles.timeLabel}>ساعت</Text>
-                {/* در ردیف راست‌به‌چپ، ساعت سمت راست و دقیقه سمت چپ می‌نشیند — همان «۱۰:۱۵». */}
-                <TextInput
-                  value={hourText}
-                  onChangeText={text => setHourText(toFaDigits(toEnDigits(text).replace(/[^\d]/g, '').slice(0, 2)))}
-                  onBlur={() => setHourText(toFaDigits(pad2(clampDigits(hourText, 23))))}
-                  keyboardType="number-pad"
-                  selectTextOnFocus
-                  maxLength={2}
-                  style={styles.timeInput}
-                  textAlign="center"
-                />
-                <Text style={styles.timeColon}>:</Text>
+                {/*
+                  ساعت همیشه چپ‌به‌راست خوانده می‌شود («۱۴:۳۰»): ساعت سمت چپ، دقیقه سمت
+                  راست. چون ردیف راست‌به‌چپ است و فرزند اول سمت راست می‌نشیند، دقیقه
+                  اول می‌آید. قبلاً برعکس بود و «۳۰:۱۴» دیده می‌شد.
+                */}
                 <TextInput
                   value={minuteText}
                   onChangeText={text => setMinuteText(toFaDigits(toEnDigits(text).replace(/[^\d]/g, '').slice(0, 2)))}
@@ -202,6 +195,19 @@ export function JalaliDatePicker({ visible, value, onSelect, onClose, title, wit
                   maxLength={2}
                   style={styles.timeInput}
                   textAlign="center"
+                  accessibilityLabel="دقیقه"
+                />
+                <Text style={styles.timeColon}>:</Text>
+                <TextInput
+                  value={hourText}
+                  onChangeText={text => setHourText(toFaDigits(toEnDigits(text).replace(/[^\d]/g, '').slice(0, 2)))}
+                  onBlur={() => setHourText(toFaDigits(pad2(clampDigits(hourText, 23))))}
+                  keyboardType="number-pad"
+                  selectTextOnFocus
+                  maxLength={2}
+                  style={styles.timeInput}
+                  textAlign="center"
+                  accessibilityLabel="ساعت"
                 />
               </View>
 

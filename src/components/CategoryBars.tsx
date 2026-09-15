@@ -1,18 +1,29 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { CategoryBreakdown } from '../types';
 import { colors, radius, spacing } from '../theme';
 import { formatPercent, formatToman } from '../utils/format';
 import { Text } from './Text';
 
+interface Props {
+  data: CategoryBreakdown[];
+  /** لمس هر ردیف — داشبورد با آن به فهرست تراکنش‌های همان دسته می‌رود. */
+  onPress?: (categoryId: string) => void;
+}
+
 /** نمودار میله‌ای دسته‌بندی — هر ردیف یک دسته. */
-export function CategoryBars({ data }: { data: CategoryBreakdown[] }) {
+export function CategoryBars({ data, onPress }: Props) {
   const max = data.reduce((m, item) => Math.max(m, item.total), 0) || 1;
 
   return (
     <View style={styles.list}>
       {data.map(item => (
-        <View key={item.category.id} style={styles.row}>
+        <TouchableOpacity
+          key={item.category.id}
+          style={styles.row}
+          onPress={onPress ? () => onPress(item.category.id) : undefined}
+          disabled={!onPress}
+          activeOpacity={0.6}>
           <View style={styles.header}>
             <Text style={styles.label} numberOfLines={1}>
               {item.category.emoji}  {item.category.label}
@@ -30,7 +41,7 @@ export function CategoryBars({ data }: { data: CategoryBreakdown[] }) {
           </View>
 
           <Text style={styles.amount}>{formatToman(item.total)}</Text>
-        </View>
+        </TouchableOpacity>
       ))}
     </View>
   );

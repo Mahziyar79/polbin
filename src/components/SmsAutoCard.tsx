@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AppState, Linking, StyleSheet, View } from 'react-native';
+import { AppState, Linking, Platform, StyleSheet, View } from 'react-native';
 import {
   hasSmsPermission,
   isSupported,
@@ -20,6 +20,13 @@ import { Text } from './Text';
 export function SmsAutoCard() {
   const [granted, setGranted] = useState<boolean | null>(null);
   const [blocked, setBlocked] = useState(false);
+  /**
+   * از اندروید ۱۵، مجوز پیامک برای اپ‌هایی که از فروشگاه نصب نشده‌اند «محدود»
+   * است: دیالوگ سیستم به‌جای پرسیدن می‌گوید «دسترسی رد شد» و تنها راه، «Allow
+   * restricted settings» در صفحه‌ی اپ است. با نصب از بازار این پیش نمی‌آید، ولی
+   * تا آن موقع (و برای هر کسی که فایل APK را مستقیم نصب می‌کند) باید راهش را گفت.
+   */
+  const [deniedOnRestrictedAndroid, setDeniedOnRestrictedAndroid] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(() => {
@@ -41,6 +48,7 @@ export function SmsAutoCard() {
     try {
       const outcome = await requestSmsPermission();
       setBlocked(outcome === 'blocked');
+      setDeniedOnRestrictedAndroid(outcome !== 'granted' && Number(Platform.Version) >= 35);
       if (outcome === 'granted') setGranted(true);
     } finally {
       setBusy(false);
@@ -62,7 +70,27 @@ export function SmsAutoCard() {
         می‌کند. پیامک‌ها روی همین گوشی خوانده می‌شوند و هیچ‌جا ذخیره یا فرستاده نمی‌شوند.
       </Text>
 
-      {blocked ? (
+      {deniedOnRestrictedAndroid ? (
+        <>
+          <View style={styles.blockedBox}>
+            <Text style={styles.blockedText}>
+              اگر گوشی گفت «دسترسی رد شد» یا «تنظیمات محدود»: این را اندروید برای اپ‌هایی که
+              از فروشگاه نصب نشده‌اند می‌گوید، نه به‌خاطر پول‌بین. راه بازش:
+            </Text>
+            <Text style={styles.blockedText}>۱. دکمه‌ی زیر را بزن تا صفحه‌ی اپ باز شود.</Text>
+            <Text style={styles.blockedText}>
+              ۲. منوی سه‌نقطه‌ی بالا ← «Allow restricted settings» (تنظیمات محدود مجاز).
+            </Text>
+            <Text style={styles.blockedText}>۳. دسترسی‌ها ← پیامک ← مجاز.</Text>
+            <Text style={styles.blockedText}>تا آن موقع، هم‌رسانی دستی پیامک مثل قبل کار می‌کند.</Text>
+          </View>
+          <AppButton
+            title="باز کردن صفحه‌ی اپ در تنظیمات"
+            onPress={() => Linking.openSettings()}
+            variant="secondary"
+          />
+        </>
+      ) : blocked ? (
         <>
           <Text style={styles.blocked}>
             مجوز را قبلاً رد کرده‌ای، پس اندروید دیگر نمی‌پرسد. باید از تنظیمات خود گوشی
@@ -87,6 +115,14 @@ const styles = StyleSheet.create({
   emoji: { fontSize: 18 },
   title: { fontSize: 15, fontWeight: '800', color: colors.primaryDark },
   body: { fontSize: 13, color: colors.text, lineHeight: 24, marginBottom: spacing.xs },
+  blockedBox: {
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  blockedText: { fontSize: 12, color: colors.text, lineHeight: 22 },
   blocked: {
     fontSize: 12,
     color: colors.expense,

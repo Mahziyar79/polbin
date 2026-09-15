@@ -114,7 +114,7 @@ export function AddInstallmentScreen({ navigation, route }: Props) {
 
     // متن با واژه‌ی فارسی شروع می‌شود تا عنوان لاتین جهت سطر را برنگرداند.
     Alert.alert('حذف قسط', `جدول اقساط «${editing.title}» حذف شود؟`, [
-      { text: 'بی‌خیال', style: 'cancel' },
+      { text: 'بازگشت', style: 'cancel' },
       {
         text: 'حذف',
         style: 'destructive',

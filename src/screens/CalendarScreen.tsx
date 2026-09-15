@@ -2,10 +2,13 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card } from '../components/Card';
+import { FormScreenHeader } from '../components/FormScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { TransactionRow } from '../components/TransactionRow';
 import { RootStackParamList } from '../navigation/types';
 import { balanceOf, dayKey, groupByDay } from '../services/analytics';
+import { DueInstallment, expand } from '../services/installments';
+import { useInstallments } from '../state/InstallmentsContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
 import { Transaction } from '../types';
@@ -34,6 +37,7 @@ function sumOf(transactions: Transaction[]): number {
 
 export function CalendarScreen({ navigation }: Props) {
   const { transactions, lastAddedId } = useTransactions();
+  const { installments } = useInstallments();
 
   const today = useMemo(() => new Date(), []);
   const todayJalali = useMemo(() => toJalali(today), [today]);
@@ -45,6 +49,23 @@ export function CalendarScreen({ navigation }: Props) {
   const [selected, setSelected] = useState<Date>(today);
 
   const byDay = useMemo(() => groupByDay(transactions), [transactions]);
+
+  /**
+   * سررسید قسط‌ها به تفکیک روز. همه‌ی برنامه‌ها یک‌جا باز می‌شوند — حداکثر
+   * ۱۲۰ قسط در هر برنامه، پس برای چند وام هم ناچیز است.
+   */
+  const dueByDay = useMemo(() => {
+    const map = new Map<string, DueInstallment[]>();
+    for (const plan of installments) {
+      for (const item of expand(plan, today)) {
+        const key = dayKey(item.dueDate);
+        const list = map.get(key);
+        if (list) list.push(item);
+        else map.set(key, [item]);
+      }
+    }
+    return map;
+  }, [installments, today]);
 
   /** روزهای ماه به‌علاوه‌ی خانه‌های خالی ابتدای هفته. */
   const { cells, leadingBlanks } = useMemo(() => {
@@ -63,6 +84,7 @@ export function CalendarScreen({ navigation }: Props) {
   const selectedKey = dayKey(selected);
   const selectedJalali = toJalali(selected);
   const selectedTransactions = byDay.get(selectedKey) ?? [];
+  const selectedDue = dueByDay.get(selectedKey) ?? [];
 
   const expenses = selectedTransactions.filter(tx => tx.type === 'debit');
   const incomes = selectedTransactions.filter(tx => tx.type === 'credit');
@@ -106,12 +128,11 @@ export function CalendarScreen({ navigation }: Props) {
   return (
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topBar}>
-          <Text style={styles.screenTitle}>تقویم خرج</Text>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
-            <Text style={styles.closeText}>بستن</Text>
-          </TouchableOpacity>
-        </View>
+        <FormScreenHeader
+          onBack={() => navigation.goBack()}
+          title="تقویم خرج"
+          subtitle="خرج و درآمد هر روز، و روزهایی که قسط داری."
+        />
 
         <Card style={styles.calendarCard}>
           <View style={styles.monthBar}>
@@ -143,6 +164,9 @@ export function CalendarScreen({ navigation }: Props) {
               const dayTransactions = byDay.get(cell.key);
               const hasExpense = dayTransactions?.some(tx => tx.type === 'debit') ?? false;
               const hasIncome = dayTransactions?.some(tx => tx.type === 'credit') ?? false;
+              const dueToday = dueByDay.get(cell.key);
+              const hasUnpaidDue = dueToday?.some(item => !item.paid) ?? false;
+              const hasPaidDue = Boolean(dueToday) && !hasUnpaidDue;
               const isSelected = cell.key === selectedKey;
               const isToday = cell.key === dayKey(today);
 
@@ -166,10 +190,27 @@ export function CalendarScreen({ navigation }: Props) {
                   <View style={styles.dotRow}>
                     {hasExpense ? <View style={[styles.dot, styles.dotExpense]} /> : null}
                     {hasIncome ? <View style={[styles.dot, styles.dotIncome]} /> : null}
+                    {hasUnpaidDue ? <View style={[styles.dot, styles.dotDue]} /> : null}
+                    {hasPaidDue ? <View style={[styles.dot, styles.dotDuePaid]} /> : null}
                   </View>
                 </TouchableOpacity>
               );
             })}
+          </View>
+
+          <View style={styles.legend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.dot, styles.dotExpense]} />
+              <Text style={styles.legendText}>هزینه</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.dot, styles.dotIncome]} />
+              <Text style={styles.legendText}>درآمد</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.dot, styles.dotDue]} />
+              <Text style={styles.legendText}>سررسید قسط</Text>
+            </View>
           </View>
         </Card>
 
@@ -191,16 +232,50 @@ export function CalendarScreen({ navigation }: Props) {
             ) : null}
           </View>
 
+          {selectedDue.length > 0 ? (
+            <View style={styles.group}>
+              <View style={styles.groupHeader}>
+                <Text style={styles.groupTitle}>قسط‌های این روز</Text>
+                <Text style={[styles.groupTotal, { color: colors.primaryDark }]}>
+                  {formatToman(selectedDue.reduce((sum, item) => sum + item.plan.amount, 0))}
+                </Text>
+              </View>
+              <Card>
+                {selectedDue.map((item, index) => (
+                  <TouchableOpacity
+                    key={`${item.plan.id}-${item.number}`}
+                    onPress={() => navigation.navigate('Installments')}
+                    style={[styles.dueRow, index > 0 ? styles.dueRowStacked : null]}>
+                    <View style={styles.dueText}>
+                      <Text style={styles.dueTitle} numberOfLines={1}>
+                        {item.plan.title}
+                      </Text>
+                      <Text style={styles.dueMeta}>
+                        {`قسط ${toFaDigits(item.number)} از ${toFaDigits(item.plan.count)}`}
+                      </Text>
+                    </View>
+                    <View style={styles.dueTrailing}>
+                      <Text style={styles.dueAmount}>{formatToman(item.plan.amount, false)}</Text>
+                      <Text style={[styles.dueStatus, item.paid ? styles.duePaid : styles.dueUnpaid]}>
+                        {item.paid ? 'پرداخت شده' : 'پرداخت نشده'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </Card>
+            </View>
+          ) : null}
+
           {selectedTransactions.length > 0 ? (
             <>
               {renderGroup('درآمد', incomes, colors.success)}
               {renderGroup('هزینه', expenses, colors.expense)}
             </>
-          ) : (
+          ) : selectedDue.length === 0 ? (
             <Card>
               <Text style={styles.emptyText}>این روز تراکنشی ثبت نشده است.</Text>
             </Card>
-          )}
+          ) : null}
         </View>
       </ScrollView>
     </ScreenContainer>
@@ -209,15 +284,6 @@ export function CalendarScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xl },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  screenTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
-  closeButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt,
-  },
-  closeText: { fontSize: 12, color: colors.textMuted, fontWeight: '700' },
   calendarCard: { gap: spacing.md },
   monthBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   arrow: {
@@ -256,6 +322,29 @@ const styles = StyleSheet.create({
   dot: { width: 5, height: 5, borderRadius: radius.pill },
   dotExpense: { backgroundColor: colors.expense },
   dotIncome: { backgroundColor: colors.success },
+  dotDue: { backgroundColor: colors.gold },
+  dotDuePaid: { backgroundColor: colors.border },
+  legend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  legendText: { flexShrink: 1, fontSize: 11, color: colors.textMuted },
+  dueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
+  dueRowStacked: { borderTopWidth: 1, borderTopColor: colors.border },
+  dueText: { flex: 1, gap: 2 },
+  dueTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
+  dueMeta: { fontSize: 12, color: colors.textFaint },
+  dueTrailing: { alignItems: 'flex-end', gap: 2 },
+  dueAmount: { fontSize: 14, fontWeight: '800', color: colors.text },
+  dueStatus: { fontSize: 11, fontWeight: '700' },
+  duePaid: { color: colors.success },
+  // طلایی روی سفید کنتراست ندارد؛ نقطه طلایی می‌ماند، متن نه.
+  dueUnpaid: { color: colors.primaryDark },
   section: { gap: spacing.md },
   selectedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectedDate: { fontSize: 16, fontWeight: '800', color: colors.text },

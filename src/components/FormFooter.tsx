@@ -39,7 +39,7 @@ export function FormFooter({
       <AppButton title={submitTitle} onPress={onSubmit} loading={loading} disabled={disabled} />
       {onCancel ? (
         <TouchableOpacity onPress={onCancel} style={styles.cancelLink}>
-          <Text style={styles.cancelText}>{cancelTitle ?? 'بی‌خیال'}</Text>
+          <Text style={styles.cancelText}>{cancelTitle ?? 'بازگشت'}</Text>
         </TouchableOpacity>
       ) : null}
     </View>

@@ -1,31 +1,36 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React from 'react';
-import { Image, ScrollView, StyleSheet, View } from 'react-native';
-import { AppButton } from '../components/AppButton';
+import { Image, Linking, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Card } from '../components/Card';
 import { FeatureList } from '../components/FeatureList';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Text } from '../components/Text';
+import { APP_VERSION, SUPPORT_TELEGRAM_URL, SUPPORT_TELEGRAM_USERNAME } from '../data/support';
 import { RootStackParamList } from '../navigation/types';
-import { colors, spacing } from '../theme';
+import { colors, radius, spacing } from '../theme';
 import { toFaDigits } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'About'>;
 
 const LOGO = require('../public/logos/logo_vertical.png');
 
-/** باید با `versionName` در android/app/build.gradle یکی بماند. */
-const VERSION = '1.0';
-
 
 export function AboutScreen({ navigation }: Props) {
   return (
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.back}
+          accessibilityRole="button"
+          accessibilityLabel="بازگشت">
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+
         <Image source={LOGO} style={styles.logo} resizeMode="contain" />
 
         <Text style={styles.tagline}>خرجت را بدون دفترچه بفهم</Text>
-        <Text style={styles.version}>{`نسخه‌ی ${toFaDigits(VERSION)}`}</Text>
+        <Text style={styles.version}>{`نسخه‌ی ${toFaDigits(APP_VERSION)}`}</Text>
 
         <FeatureList />
 
@@ -41,17 +46,38 @@ export function AboutScreen({ navigation }: Props) {
             و خروجی» فایل پشتیبان بگیر.
           </Text>
         </Card>
+
+        <Card style={styles.contact}>
+          <Text style={styles.contactTitle}>💬  مشکلی دیدی یا پیشنهادی داری؟</Text>
+          <Text style={styles.contactBody}>
+            پول‌بین سرور ندارد، پس از هیچ خطایی خودش خبردار نمی‌شود. اگر پیامکی غلط خوانده
+            شد یا چیزی کار نکرد، مستقیم به سازنده بگو.
+          </Text>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(SUPPORT_TELEGRAM_URL).catch(() => {})}
+            style={styles.contactLink}
+            accessibilityRole="link">
+            <Text style={styles.contactLinkText}>{`تلگرام: @${SUPPORT_TELEGRAM_USERNAME}`}</Text>
+          </TouchableOpacity>
+        </Card>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <AppButton title="بستن" onPress={() => navigation.goBack()} variant="ghost" />
-      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xl },
+  back: {
+    alignSelf: 'flex-end',
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: { fontSize: 20, color: colors.text, lineHeight: 24 },
   logo: { width: '100%', height: 130, marginTop: spacing.md },
   tagline: { fontSize: 16, fontWeight: '800', color: colors.text, textAlign: 'center' },
   version: {
@@ -70,10 +96,9 @@ const styles = StyleSheet.create({
   privacyTitle: { fontSize: 14, fontWeight: '800', color: colors.success },
   privacyBody: { fontSize: 13, color: colors.text, lineHeight: 24 },
   privacyNote: { fontSize: 12, color: colors.textMuted, lineHeight: 22 },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
+  contact: { marginTop: spacing.md, gap: spacing.sm },
+  contactTitle: { fontSize: 14, fontWeight: '800', color: colors.text },
+  contactBody: { fontSize: 13, color: colors.textMuted, lineHeight: 24 },
+  contactLink: { alignSelf: 'flex-start', paddingVertical: spacing.xs },
+  contactLinkText: { fontSize: 14, fontWeight: '700', color: colors.primary },
 });

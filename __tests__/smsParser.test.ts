@@ -63,6 +63,34 @@ describe('parseSms', () => {
     expect(date.getMinutes()).toBe(34);
   });
 
+  it('واریز بلوبانک با فعل «نشست» درآمد است', () => {
+    const result = parseSms(
+      ['بلو', 'پوزش بابت اختلال', 'مهزیار عزیز، 78,000,000 ریال به حساب شما نشست.', 'موجودی: 464,878,612 ریال', '۹:۱۰', '۱۴۰۵.۰۶.۲۲'].join(NL),
+    );
+
+    expect(result.type).toBe('credit');
+    expect(result.amount).toBe(7_800_000);
+    expect(result.balance).toBe(46_487_861);
+    expect(result.bank).toBe('بلوبانک');
+    expect(toJalali(new Date(result.date))).toMatchObject({ jy: 1405, jm: 6, jd: 22 });
+  });
+
+  it('واریز بلو با «دریافت پل» درآمد است و دسته‌اش دسته‌ی درآمد', () => {
+    const result = parseSms(
+      ['بلو', 'دریافت پل', ' مهزیار عزیز، 3,000,000 ریال به حساب شما نشست.', ' موجودی: 372,543,812 ریال', '۱۸:۲۲', '۱۴۰۵.۰۶.۲۲'].join(NL),
+    );
+
+    expect(result.type).toBe('credit');
+    expect(result.amount).toBe(300_000);
+    // قبلاً «متفرقه» (دسته‌ی خرج) می‌گرفت و در فرم درآمد هیچ چیپی انتخاب نبود.
+    expect(result.categoryId).toBe('income_other');
+  });
+
+  it('انتقال خروجی «به حساب» دیگران، درآمد حساب نمی‌شود', () => {
+    const result = parseSms('انتقال 500,000 ریال از حساب شما به حساب 1234567890 انجام شد. مانده 4,000,000 ریال');
+    expect(result.type).toBe('debit');
+  });
+
   it('مانده را به‌عنوان مبلغ برنمی‌دارد', () => {
     const result = parseSms(`بانک ملت
 خريد

@@ -1,7 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
-import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
 import { FormScreenHeader } from '../components/FormScreenHeader';
 import { PinPad } from '../components/PinPad';
@@ -82,8 +81,11 @@ export function LockSettingsScreen({ navigation }: Props) {
   if (!lock.available) {
     return (
       <ScreenContainer>
-        <FormScreenHeader title="قفل اپ" subtitle="این قابلیت نیاز به نصب دوباره‌ی اپ دارد." />
-        <AppButton title="بستن" onPress={() => navigation.goBack()} variant="ghost" />
+        <FormScreenHeader
+          onBack={() => navigation.goBack()}
+          title="امنیت"
+          subtitle="این قابلیت نیاز به نصب دوباره‌ی اپ دارد."
+        />
       </ScreenContainer>
     );
   }
@@ -92,7 +94,8 @@ export function LockSettingsScreen({ navigation }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content}>
         <FormScreenHeader
-          title="قفل اپ"
+          onBack={() => navigation.goBack()}
+          title="امنیت"
           subtitle="با رمز، هر کسی که گوشی را بردارد موجودی و خرج‌هایت را نمی‌بیند. رمز فقط روی همین گوشی است."
         />
 
@@ -101,7 +104,7 @@ export function LockSettingsScreen({ navigation }: Props) {
             <Text style={styles.prompt}>{error ?? prompt}</Text>
             <PinPad onComplete={handlePin} resetKey={resetKey} />
             <TouchableOpacity onPress={() => { setStep({ kind: 'idle' }); restart(null); }} style={styles.cancel}>
-              <Text style={styles.cancelText}>بی‌خیال</Text>
+              <Text style={styles.cancelText}>بازگشت</Text>
             </TouchableOpacity>
           </Card>
         ) : (
@@ -161,9 +164,6 @@ export function LockSettingsScreen({ navigation }: Props) {
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <AppButton title="بستن" onPress={() => navigation.goBack()} variant="ghost" />
-      </View>
     </ScreenContainer>
   );
 }
@@ -188,11 +188,5 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceAlt,
-  },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
   },
 });

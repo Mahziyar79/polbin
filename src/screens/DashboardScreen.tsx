@@ -38,8 +38,7 @@ import { latestBalances } from '../services/balances';
 import { unpaidThisMonth } from '../services/installments';
 import { colors, radius, spacing } from '../theme';
 import { Transaction, TransactionType } from '../types';
-import { formatToman, toFaDigits } from '../utils/format';
-import { jalaliLongDate } from '../utils/jalali';
+import { formatJalaliDate, formatToman, toFaDigits } from '../utils/format';
 import { Text } from '../components/Text';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
@@ -152,7 +151,7 @@ export function DashboardScreen({ navigation }: Props) {
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Calendar')}>
               <Text style={styles.monthLabel}>
-                {toFaDigits(jalaliLongDate(new Date()))}  📅
+                {formatJalaliDate(new Date().toISOString())}  📅
               </Text>
             </TouchableOpacity>
           </View>
@@ -244,6 +243,31 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
         </Card>
 
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              {isExpense ? 'خرج به تفکیک دسته' : 'درآمد به تفکیک دسته'}
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
+              <Text style={styles.sectionAction}>مدیریت دسته‌بندی‌ها</Text>
+            </TouchableOpacity>
+          </View>
+          <Card>
+            {breakdown.length > 0 ? (
+              <CategoryBars
+                data={breakdown}
+                onPress={categoryId => navigation.navigate('Transactions', { categoryId, type: mode })}
+              />
+            ) : (
+              <Text style={styles.emptyText}>
+                {isExpense
+                  ? 'در این بازه خرجی ثبت نشده است.'
+                  : 'در این بازه درآمدی ثبت نشده است.'}
+              </Text>
+            )}
+          </Card>
+        </View>
+
         {isExpense ? (
           <>
             <BudgetCard
@@ -283,28 +307,6 @@ export function DashboardScreen({ navigation }: Props) {
                   />
                 </View>
               ))
-            )}
-          </Card>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              {isExpense ? 'خرج به تفکیک دسته' : 'درآمد به تفکیک دسته'}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
-              <Text style={styles.sectionAction}>مدیریت دسته‌بندی‌ها</Text>
-            </TouchableOpacity>
-          </View>
-          <Card>
-            {breakdown.length > 0 ? (
-              <CategoryBars data={breakdown} />
-            ) : (
-              <Text style={styles.emptyText}>
-                {isExpense
-                  ? 'در این بازه خرجی ثبت نشده است.'
-                  : 'در این بازه درآمدی ثبت نشده است.'}
-              </Text>
             )}
           </Card>
         </View>

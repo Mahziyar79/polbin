@@ -1,9 +1,10 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
 import { FormScreenHeader } from '../components/FormScreenHeader';
+import { JalaliDatePicker } from '../components/JalaliDatePicker';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Text } from '../components/Text';
 import { RootStackParamList } from '../navigation/types';
@@ -22,7 +23,7 @@ import { useInstallments } from '../state/InstallmentsContext';
 import { useCategories } from '../state/CategoriesContext';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
-import { toFaDigits } from '../utils/format';
+import { formatJalaliDate, toFaDigits } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Backup'>;
 
@@ -35,6 +36,21 @@ export function BackupScreen({ navigation }: Props) {
   const { installments, replaceAll: replaceInstallments } = useInstallments();
 
   const [busy, setBusy] = useState<Job | null>(null);
+
+  /**
+   * «تا تاریخ» برای هر سه خروجی. null یعنی همه‌چیز. برای پشتیبان JSON هم اعمال
+   * می‌شود چون کاربر خواست، ولی متن کارت هشدار می‌دهد که تراکنش‌های بعد از آن
+   * تاریخ در فایل نیستند — پشتیبان ناقص، بدتر از نداشتن پشتیبان است.
+   */
+  const [until, setUntil] = useState<Date | null>(null);
+  const [untilPickerOpen, setUntilPickerOpen] = useState(false);
+
+  const exported = useMemo(() => {
+    if (!until) return transactions;
+    const limit = new Date(until);
+    limit.setHours(23, 59, 59, 999);
+    return transactions.filter(tx => new Date(tx.date).getTime() <= limit.getTime());
+  }, [transactions, until]);
   const [message, setMessage] = useState<string | null>(null);
 
   async function run(kind: Job, action: () => Promise<void>) {
@@ -52,7 +68,7 @@ export function BackupScreen({ navigation }: Props) {
   const handleExport = () =>
     run('export', async () => {
       const json = buildBackup({
-        transactions,
+        transactions: exported,
         customCategories,
         monthlyBudget: monthly,
         installments,
@@ -62,7 +78,7 @@ export function BackupScreen({ navigation }: Props) {
 
   const handleXlsx = () =>
     run('xlsx', async () => {
-      const bytes = buildTransactionsXlsx(transactions, categories);
+      const bytes = buildTransactionsXlsx(exported, categories);
       await saveAndShareBytes(
         xlsxFileName(),
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -73,9 +89,11 @@ export function BackupScreen({ navigation }: Props) {
   const handlePdf = () =>
     run('pdf', async () => {
       const html = buildReportHtml({
-        transactions,
+        transactions: exported,
         categories,
-        periodLabel: `${toFaDigits(transactions.length)} تراکنش`,
+        periodLabel: until
+          ? `${toFaDigits(exported.length)} تراکنش تا ${formatJalaliDate(until.toISOString())}`
+          : `${toFaDigits(exported.length)} تراکنش`,
       });
       await printHtml(html, 'گزارش پول‌بین');
     });
@@ -126,9 +144,30 @@ export function BackupScreen({ navigation }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content}>
         <FormScreenHeader
-          title="پشتیبان و خروجی"
+          onBack={() => navigation.goBack()}
+          title="پشتیبان‌گیری و خروجی"
           subtitle="داده‌ی پول‌بین فقط روی همین گوشی است. یک نسخه‌ی پشتیبان بگیر تا با عوض کردن گوشی از دستش ندهی."
         />
+
+        <Card style={styles.card}>
+          <Text style={styles.cardTitle}>تا چه تاریخی؟</Text>
+          <Text style={styles.cardBody}>
+            هر سه خروجی زیر تراکنش‌های تا این تاریخ را می‌گیرند.
+            {until ? ' تراکنش‌های بعد از آن در فایل نخواهند بود.' : ' الان همه‌ی تراکنش‌ها.'}
+          </Text>
+          <View style={styles.untilRow}>
+            <TouchableOpacity onPress={() => setUntilPickerOpen(true)} style={styles.untilButton}>
+              <Text style={styles.untilText}>
+                {until ? `📅  تا ${formatJalaliDate(until.toISOString())}` : '📅  انتخاب تاریخ'}
+              </Text>
+            </TouchableOpacity>
+            {until ? (
+              <TouchableOpacity onPress={() => setUntil(null)} style={styles.untilClear}>
+                <Text style={styles.untilClearText}>همه</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </Card>
 
         {isAvailable() ? null : (
           <Card style={styles.warning}>
@@ -141,7 +180,7 @@ export function BackupScreen({ navigation }: Props) {
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>پشتیبان کامل</Text>
           <Text style={styles.cardBody}>
-            یک فایل JSON شامل {toFaDigits(transactions.length)} تراکنش و{' '}
+            یک فایل JSON شامل {toFaDigits(exported.length)} تراکنش و{' '}
             {toFaDigits(customCategories.length)} دسته‌ی دلخواه. همین فایل را می‌شود بعداً
             برگرداند.
           </Text>
@@ -169,7 +208,7 @@ export function BackupScreen({ navigation }: Props) {
             onPress={handleXlsx}
             variant="secondary"
             loading={busy === 'xlsx'}
-            disabled={busy !== null || transactions.length === 0}
+            disabled={busy !== null || exported.length === 0}
           />
         </Card>
 
@@ -184,16 +223,24 @@ export function BackupScreen({ navigation }: Props) {
             onPress={handlePdf}
             variant="secondary"
             loading={busy === 'pdf'}
-            disabled={busy !== null || transactions.length === 0}
+            disabled={busy !== null || exported.length === 0}
           />
         </Card>
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <AppButton title="بستن" onPress={() => navigation.goBack()} variant="ghost" />
-      </View>
+      <JalaliDatePicker
+        visible={untilPickerOpen}
+        value={until ?? new Date()}
+        title="خروجی تا تاریخ"
+        onSelect={date => {
+          setUntil(date);
+          setUntilPickerOpen(false);
+        }}
+        onClose={() => setUntilPickerOpen(false)}
+      />
+
     </ScreenContainer>
   );
 }
@@ -205,6 +252,26 @@ const styles = StyleSheet.create({
   warningText: { fontSize: 13, color: colors.expense, lineHeight: 24 },
   cardTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
   cardBody: { fontSize: 13, color: colors.textMuted, lineHeight: 24, marginBottom: spacing.xs },
+  untilRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  untilButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  untilText: { fontSize: 14, color: colors.text },
+  untilClear: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+  },
+  untilClearText: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
   link: { alignItems: 'center', paddingVertical: spacing.sm },
   linkText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   message: {
@@ -215,11 +282,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     lineHeight: 24,
-  },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
   },
 });

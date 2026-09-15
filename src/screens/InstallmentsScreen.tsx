@@ -87,6 +87,7 @@ export function InstallmentsScreen({ navigation }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content}>
         <FormScreenHeader
+          onBack={() => navigation.goBack()}
           title="قسط‌ها"
           subtitle="وام‌ها و خریدهای قسطی‌ات. تاریخ سررسید هر قسط خودکار حساب می‌شود."
         />
@@ -152,9 +153,6 @@ export function InstallmentsScreen({ navigation }: Props) {
           title="افزودن قسط"
           onPress={() => navigation.navigate('AddInstallment', {})}
         />
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeLink}>
-          <Text style={styles.closeText}>بستن</Text>
-        </TouchableOpacity>
       </View>
     </ScreenContainer>
   );
@@ -338,6 +336,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     gap: spacing.xs,
   },
-  closeLink: { alignItems: 'center', paddingVertical: spacing.sm },
-  closeText: { color: colors.textMuted, fontSize: 13 },
 });

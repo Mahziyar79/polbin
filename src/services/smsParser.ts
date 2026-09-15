@@ -1,5 +1,6 @@
 import { CategoryId, ParsedSms, TransactionType } from '../types';
 import { BANK_MENTIONS, BANK_NAMES } from '../data/banks';
+import { BUILT_IN_CATEGORIES, fallbackIdFor } from '../data/categories';
 import { toEnDigits } from '../utils/format';
 import { toGregorian, toJalali } from '../utils/jalali';
 
@@ -36,7 +37,22 @@ const BANK_MENTION_RE = new RegExp(
   'g',
 );
 
-const CREDIT_KEYWORDS = ['واریز', 'دریافت', 'بستانکار', 'حقوق', 'پاداش', 'عودت', 'برگشت وجه'];
+/**
+ * نشانه‌های واریز. «نشست» و «به حساب شما» مال بلوبانک است («۷۸ میلیون ریال به حساب
+ * شما نشست»). «به حساب» تنها کافی نیست: پیامک انتقالِ خروجی هم «به حساب ۱۲۳۴» دارد.
+ */
+const CREDIT_KEYWORDS = [
+  'واریز',
+  'دریافت',
+  'بستانکار',
+  'حقوق',
+  'پاداش',
+  'عودت',
+  'برگشت وجه',
+  'نشست',
+  'به حساب شما',
+  'به حسابت',
+];
 
 /** کلیدواژه‌ی فروشگاه → دسته. اولین تطابق برنده است. */
 const MERCHANT_RULES: Array<{ pattern: RegExp; merchant: string; category: CategoryId }> = [
@@ -268,6 +284,11 @@ export function parseSms(raw: string): ParsedSms {
   const accountLast4 = extractAccountLast4(text);
   const type: TransactionType = CREDIT_KEYWORDS.some(k => text.includes(k)) ? 'credit' : 'debit';
 
+  // دسته باید هم‌نوعِ تراکنش باشد. واریزی که هیچ قاعده‌ای نگرفته، قبلاً «متفرقه»
+  // (دسته‌ی خرج) می‌گرفت و در فرم درآمد هیچ چیپی انتخاب نبود.
+  const categoryKind = BUILT_IN_CATEGORIES.find(c => c.id === category)?.kind;
+  const categoryId = categoryKind === type ? category : fallbackIdFor(type);
+
   const date = extractDate(text) ?? new Date().toISOString();
 
   let confidence = 0;
@@ -279,7 +300,7 @@ export function parseSms(raw: string): ParsedSms {
   return {
     amount,
     merchant,
-    categoryId: category,
+    categoryId,
     date,
     bank,
     cardLast4: cardMatch ? cardMatch[1] : null,
