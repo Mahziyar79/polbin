@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      فقط بیلد debug: Metro و منوی توسعه‌دهنده به شبکه نیاز دارند.
+      نسخه‌ی release عمداً این مجوز را ندارد — اپ سرور ندارد و نباید بتواند به
+      اینترنت وصل شود؛ صفحه‌ی مجوزهای بازار هم همین را به کاربر نشان می‌دهد.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>
