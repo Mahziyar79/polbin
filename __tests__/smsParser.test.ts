@@ -147,6 +147,29 @@ ${String(today.jm).padStart(2, '0')}/${String(today.jd).padStart(2, '0')}-08:32`
     expect(new Date(result.date).getTime()).toBeLessThanOrEqual(Date.now() + 86_400_000);
   });
 
+  it('سالِ تاریخ را مبلغ نمی‌گیرد، حتی وقتی درست بعد از کلیدواژه آمده', () => {
+    expect(parseSms('واریز 1405/06/20 مبلغ 1,000,000 ریال').amount).toBe(100000);
+    expect(parseSms('خرید 1405.06.20 مبلغ 250000 ریال').amount).toBe(25000);
+    expect(parseSms('1404/06/14 برداشت 250000 ریال').amount).toBe(25000);
+  });
+
+  it('ریالِ فرد به تومانِ صحیح گرد می‌شود', () => {
+    expect(parseSms('خرید مبلغ 250,001 ریال').amount).toBe(25000);
+    expect(parseSms('خرید مبلغ 12,345 ریال').amount).toBe(1235);
+  });
+
+  it('ساعت و روزِ بی‌معنی تاریخ را جابه‌جا نمی‌کنند', () => {
+    const before = Date.now();
+    const bogus = parseSms('خرید 1405/13/45 مبلغ 250,000 ریال 25:70');
+    expect(Number.isNaN(new Date(bogus.date).getTime())).toBe(false);
+    // نه تاریخ کامل معتبر است نه ساعت، پس «همین الان» می‌ماند.
+    expect(new Date(bogus.date).getTime()).toBeGreaterThanOrEqual(before - 1000);
+
+    const badTime = parseSms('خرید 1405/06/20-25:70 مبلغ 250,000 ریال');
+    const j = toJalali(new Date(badTime.date));
+    expect([j.jm, j.jd]).toEqual([6, 20]);
+  });
+
   it('همه‌ی نمونه‌های واقعی مبلغ معتبر می‌دهند', () => {
     for (const sms of FAKE_SMS_INBOX) {
       const result = parseSms(sms);

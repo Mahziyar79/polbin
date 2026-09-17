@@ -25,6 +25,7 @@ object SmsFilter {
     val text = normalize(raw)
 
     if (PROMO_WORDS.any { text.contains(it) }) return false
+    if (LINK_RE.containsMatchIn(text)) return false
     if (!AMOUNT_RE.containsMatchIn(text)) return false
     if (TRANSACTION_WORDS.none { text.contains(it) }) return false
 
@@ -91,7 +92,20 @@ object SmsFilter {
           "رمز پویا",
           "کد تایید",
           "کد فعالسازی",
+          // پیامک اپراتور: «مشترک گرامی، موجودی حساب اصلی شما به کمتر از 100,000 ریال
+          // رسیده… خرید بسته اینترنتی». عدد، «خرید»، «موجودی حساب» — هر سه شرط را داشت.
+          "مشترک گرامی",
+          "بسته اینترنتی",
+          "بسته‌ی اینترنتی",
       )
+
+  /**
+   * لینک، نشانه‌ی قطعی پیامک غیرتراکنشی است.
+   *
+   * پیامک تراکنش بانک هیچ‌وقت لینک ندارد؛ پیامک اپراتور، فروشگاه و فیشینگ تقریباً
+   * همیشه دارد. ارزان‌ترین و مطمئن‌ترین قاعده‌ی این فهرست.
+   */
+  private val LINK_RE = Regex("""https?://|www\.|\.ir/|\.com/""")
 
   /** حداقل چهار رقم، با یا بدون جداکننده‌ی هزارگان. */
   private val AMOUNT_RE = Regex("""[\d۰-۹][\d۰-۹,،٬]{3,}""")

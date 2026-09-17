@@ -1,13 +1,10 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { createTransaction, fetchTransactions } from '../services/fakeApi';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createTransaction } from '../services/fakeApi';
 import { readJSON, STORAGE_KEYS, writeJSON } from '../services/storage';
 import { CategoryId, Transaction } from '../types';
 
 interface TransactionsContextValue {
   transactions: Transaction[];
-  loading: boolean;
-  /** پیام خطای بارگذاری؛ وقتی null است یعنی مشکلی نبوده. */
-  error: string | null;
   /** آخرین تراکنشی که کاربر تایید کرده — برای هایلایت در داشبورد. */
   lastAddedId: string | null;
   addTransaction: (input: Omit<Transaction, 'id'>) => Promise<Transaction>;
@@ -17,8 +14,6 @@ interface TransactionsContextValue {
   removeTransaction: (id: string) => void;
   /** تراکنش‌های یک دسته را به دسته‌ی دیگر منتقل می‌کند — موقع حذف دسته. */
   reassignCategory: (fromId: CategoryId, toId: CategoryId) => void;
-  /** گرفتن دوباره از سرور و بازنویسی کش محلی. */
-  reload: () => void;
   /** جایگزینی کامل لیست — برای بازگردانی از فایل پشتیبان. */
   replaceAll: (next: Transaction[]) => void;
 }
@@ -26,46 +21,15 @@ interface TransactionsContextValue {
 const TransactionsContext = createContext<TransactionsContextValue | null>(null);
 
 export function TransactionsProvider({ children }: { children: React.ReactNode }) {
-  // اگر چیزی از قبل ذخیره شده باشد همان لحظه‌ی اول در دسترس است،
-  // پس فقط وقتی «در حال بارگذاری» نشان می‌دهیم که کش خالی باشد.
-  const cached = useMemo(
-    () => readJSON<Transaction[] | null>(STORAGE_KEYS.transactions, null),
-    [],
+  // خواندن از حافظه همگام است؛ هیچ حالت «در حال بارگذاری» لازم نیست.
+  //
+  // قبلاً یک «سرور جعلی» هم بود که در اولین اجرا لیست خالی برمی‌گرداند و دکمه‌ی
+  // «تلاش دوباره» همان لیست خالی را روی داده‌ی واقعی کاربر می‌نوشت. اپ سرور
+  // ندارد؛ این لایه حذف شد.
+  const [transactions, setTransactions] = useState<Transaction[]>(() =>
+    readJSON<Transaction[]>(STORAGE_KEYS.transactions, []),
   );
-
-  const [transactions, setTransactions] = useState<Transaction[]>(cached ?? []);
-  const [loading, setLoading] = useState(cached === null);
-  const [error, setError] = useState<string | null>(null);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
-  const [reloadToken, setReloadToken] = useState(0);
-
-  useEffect(() => {
-    // با کش موجود سراغ سرور نمی‌رویم؛ فقط «تلاش دوباره» صریح این را دور می‌زند.
-    if (cached !== null && reloadToken === 0) return;
-
-    let mounted = true;
-    setLoading(true);
-    setError(null);
-
-    fetchTransactions()
-      .then(data => {
-        if (!mounted) return;
-        writeJSON(STORAGE_KEYS.transactions, data);
-        setTransactions(data);
-      })
-      .catch(() => {
-        if (mounted) setError('گرفتن تراکنش‌ها ناموفق بود. اتصالت را بررسی کن.');
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [cached, reloadToken]);
-
-  const reload = useCallback(() => setReloadToken(prev => prev + 1), []);
 
   const replaceAll = useCallback((next: Transaction[]) => {
     writeJSON(STORAGE_KEYS.transactions, next);
@@ -118,26 +82,20 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
   const value = useMemo<TransactionsContextValue>(
     () => ({
       transactions,
-      loading,
-      error,
       lastAddedId,
       addTransaction,
       updateTransaction,
       removeTransaction,
       reassignCategory,
-      reload,
       replaceAll,
     }),
     [
       transactions,
-      loading,
-      error,
       lastAddedId,
       addTransaction,
       updateTransaction,
       removeTransaction,
       reassignCategory,
-      reload,
       replaceAll,
     ],
   );

@@ -104,6 +104,15 @@ interface AmountMatch {
 
 const AMOUNT_RE = /(\d[\d,]{2,})\s*(ریال|تومان)?/g;
 
+/**
+ * سالِ یک تاریخ («1405/06/20»، «1405.06.20») مبلغ نیست.
+ *
+ * چهار رقم است و از فیلتر طول رد می‌شود، و اگر درست بعد از «واریز» یا «خرید»
+ * بیاید برچسب مبلغ هم می‌گیرد: «واریز 1405/06/20 مبلغ 1,000,000 ریال» قبلاً
+ * ۱۴۰ تومان خوانده می‌شد.
+ */
+const DATE_TAIL_RE = /^[/.-]\d{1,2}[/.-]\d{1,2}/;
+
 /** «مانده»، «موجودی» و «مانده حساب» — عددی که خرج نیست. */
 const BALANCE_LABEL = /(?:مانده|موجودی)(?:\s*حساب)?$/;
 
@@ -127,6 +136,7 @@ function extractAmounts(text: string): AmountMatch[] {
   while ((match = AMOUNT_RE.exec(text)) !== null) {
     const digits = match[1].replace(/,/g, '');
     if (digits.length < 4) continue;
+    if (DATE_TAIL_RE.test(text.slice(match.index + match[1].length))) continue;
 
     // به‌جای lookbehind: ۲۵ کاراکترِ قبل از عدد را نگاه می‌کنیم و
     // جداکننده‌های چسبیده به عدد را کنار می‌گذاریم تا به خود برچسب برسیم.
@@ -226,13 +236,20 @@ function extractMerchant(text: string): { merchant: string | null; category: Cat
  * تقویم و هم مجموع «امروز» را خراب می‌کرد.
  */
 function extractDate(text: string, now = new Date()): string | null {
-  const time = /(\d{1,2}):(\d{2})/.exec(text);
+  // ساعت و روزِ بی‌معنی («25:70»، «13/45») نادیده گرفته می‌شوند نه اینکه
+  // تاریخ را چند روز جابه‌جا کنند — `setHours(25)` بی‌صدا به فردا می‌رود.
+  const timeMatch = /(\d{1,2}):(\d{2})/.exec(text);
+  const time =
+    timeMatch && Number(timeMatch[1]) <= 23 && Number(timeMatch[2]) <= 59 ? timeMatch : null;
   const hour = time ? Number(time[1]) : 0;
   const minute = time ? Number(time[2]) : 0;
 
+  const validDay = (month: number, day: number) =>
+    month >= 1 && month <= 12 && day >= 1 && day <= (month <= 6 ? 31 : 30);
+
   // جداکننده می‌تواند «/»، «.» یا «-» باشد: بلوبانک می‌نویسد ۱۴۰۵.۰۶.۲۰.
   const full = /(1[34]\d{2})[/.-](\d{1,2})[/.-](\d{1,2})/.exec(text);
-  if (full) {
+  if (full && validDay(Number(full[2]), Number(full[3]))) {
     const date = toGregorian(Number(full[1]), Number(full[2]), Number(full[3]));
     date.setHours(hour, minute, 0, 0);
     return date.toISOString();
@@ -244,7 +261,7 @@ function extractDate(text: string, now = new Date()): string | null {
   if (short) {
     const month = Number(short[1]);
     const day = Number(short[2]);
-    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    if (!validDay(month, day)) return null;
 
     const { jy } = toJalali(now);
     let date = toGregorian(jy, month, day);
@@ -272,7 +289,8 @@ export function parseSms(raw: string): ParsedSms {
 
   const amounts = extractAmounts(text);
   const spend = pickSpendAmount(amounts);
-  const amount = spend ? (spend.currency === 'rial' ? spend.value / 10 : spend.value) : null;
+  // ریالِ فرد تومانِ اعشاری می‌دهد؛ مبلغ همیشه عدد صحیح ذخیره می‌شود.
+  const amount = spend ? Math.round(spend.currency === 'rial' ? spend.value / 10 : spend.value) : null;
 
   // نام بانک از متن برداشته می‌شود چون بعضی بانک‌ها هم‌نام فروشگاه‌های
   // زنجیره‌ای‌اند: «بانک رفاه» نباید فروشگاه رفاه خوانده شود.

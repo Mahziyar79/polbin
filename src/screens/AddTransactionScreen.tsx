@@ -12,12 +12,25 @@ import { RootStackParamList } from '../navigation/types';
 import { findDuplicate } from '../services/duplicates';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, radius, spacing } from '../theme';
+import { fallbackIdFor } from '../data/categories';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddTransaction'>;
 
-export function AddTransactionScreen({ navigation }: Props) {
+export function AddTransactionScreen({ navigation, route }: Props) {
   const { transactions, addTransaction } = useTransactions();
-  const form = useTransactionForm();
+  const prefill = route.params?.prefill;
+  const form = useTransactionForm(
+    prefill
+      ? {
+          amount: prefill.amount,
+          type: prefill.type,
+          bank: prefill.bank,
+          date: prefill.date,
+          merchant: prefill.merchant,
+          categoryId: fallbackIdFor(prefill.type),
+        }
+      : undefined,
+  );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -64,12 +77,16 @@ export function AddTransactionScreen({ navigation }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <FormScreenHeader
-          title="تراکنش جدید"
-          subtitle="خرج یا درآمدی که پیامکش نیامده را دستی ثبت کن."
+          title={prefill ? 'ثبت تراکنش بی‌پیامک' : 'تراکنش جدید'}
+          subtitle={
+            prefill
+              ? 'مبلغ و تاریخ از اختلاف مانده درآمده؛ فقط بگو چه بود.'
+              : 'خرج یا درآمدی که پیامکش نیامده را دستی ثبت کن.'
+          }
         />
         <TransactionFormFields
           form={form}
-          autoFocusAmount
+          autoFocusAmount={!prefill}
           onManageCategories={() => navigation.navigate('Categories')}
         />
 

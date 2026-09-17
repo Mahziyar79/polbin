@@ -1,20 +1,15 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { AppButton } from '../components/AppButton';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card } from '../components/Card';
 import { CategoryBars } from '../components/CategoryBars';
 import { Fab } from '../components/Fab';
 import { ProportionBar } from '../components/ProportionBar';
 import { AppMenu } from '../components/AppMenu';
 import { BalancesCard } from '../components/BalancesCard';
+import { GapCard } from '../components/GapCard';
+import { useDismissedGaps } from '../hooks/useDismissedGaps';
+import { findBalanceGaps } from '../services/gaps';
 import { BudgetCard } from '../components/BudgetCard';
 import { InstallmentsCard } from '../components/InstallmentsCard';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -79,7 +74,7 @@ const MODES = [
 
 export function DashboardScreen({ navigation }: Props) {
   const { profile } = useProfile();
-  const { transactions, loading, error, lastAddedId, reload } = useTransactions();
+  const { transactions, lastAddedId } = useTransactions();
   const { categories } = useCategories();
   const [mode, setMode] = useState<TransactionType>('debit');
   const [periodId, setPeriodId] = useState<PeriodId>(PERIODS[0].id);
@@ -102,6 +97,8 @@ export function DashboardScreen({ navigation }: Props) {
   // قسط‌های پرداخت‌نشده‌ی همین ماه، برای کم شدن از عدد آزادِ بودجه.
   const committed = useMemo(() => unpaidThisMonth(installments), [installments]);
   const balances = useMemo(() => latestBalances(transactions), [transactions]);
+  const { dismissed, dismiss } = useDismissedGaps();
+  const gaps = useMemo(() => findBalanceGaps(transactions, dismissed), [transactions, dismissed]);
   const total = useMemo(() => totalSpend(periodTransactions), [periodTransactions]);
   const income = useMemo(() => totalIncome(periodTransactions), [periodTransactions]);
   const balance = useMemo(() => balanceOf(periodTransactions), [periodTransactions]);
@@ -118,32 +115,9 @@ export function DashboardScreen({ navigation }: Props) {
     [transactions, mode],
   );
 
-  if (loading) {
-    return (
-      <ScreenContainer>
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </ScreenContainer>
-    );
-  }
-
-  if (error) {
-    return (
-      <ScreenContainer>
-        <View style={styles.loadingBox}>
-          <Text style={styles.errorTitle}>{error}</Text>
-          <AppButton title="تلاش دوباره" onPress={reload} variant="secondary" />
-        </View>
-      </ScreenContainer>
-    );
-  }
-
   return (
     <ScreenContainer flush>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={() => {}} />}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.topBar}>
           <View>
             <Text style={styles.greeting}>
@@ -167,6 +141,24 @@ export function DashboardScreen({ navigation }: Props) {
         <SmsAutoCard />
 
         <BalancesCard accounts={balances} />
+
+        <GapCard
+          gaps={gaps}
+          onDismiss={gap => dismiss(gap.id)}
+          onRecord={gap =>
+            navigation.navigate('AddTransaction', {
+              prefill: {
+                amount: gap.amount,
+                type: gap.type,
+                bank: gap.bank,
+                // تاریخِ پیامک دوم: همان لحظه‌ای که فهمیدیم پول رفته. با همین
+                // تاریخ، تراکنشِ ثبت‌شده داخل بازه می‌افتد و اختلاف خودش بسته می‌شود.
+                date: gap.to,
+                merchant: gap.type === 'debit' ? 'کارمزد یا برداشت بی‌پیامک' : 'واریز بی‌پیامک',
+              },
+            })
+          }
+        />
 
         <View style={styles.modeTabs}>
           {MODES.map(option => {
@@ -341,8 +333,6 @@ export function DashboardScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: 96 },
-  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg },
-  errorTitle: { fontSize: 15, color: colors.textMuted, textAlign: 'center', lineHeight: 26 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 20, fontWeight: '800', color: colors.text },
   monthLabel: { fontSize: 13, color: colors.textMuted, marginTop: 2 },

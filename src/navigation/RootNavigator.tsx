@@ -2,6 +2,7 @@ import {
   createNavigationContainerRef,
   DefaultTheme,
   NavigationContainer,
+  StackActions,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useEffect, useRef, useState } from 'react';
@@ -72,7 +73,10 @@ export function RootNavigator({ initialSharedText }: { initialSharedText?: strin
     // کاربر تازه هنوز وسط معرفی است؛ نباید از رویش بپریم.
     if (navigationRef.getCurrentRoute()?.name === 'Onboarding') return;
 
-    navigationRef.navigate('ConfirmTransaction', { rawSms: pendingSms });
+    // push نه navigate: اگر صفحه‌ی تایید از پیامک قبلی هنوز باز است، navigate فقط
+    // پارامترش را عوض می‌کرد و پیامک اول بی‌صدا گم می‌شد. با push هر پیامک صفحه‌ی
+    // خودش را دارد و بعد از ثبتِ یکی، قبلی دوباره جلوی چشم است.
+    navigationRef.dispatch(StackActions.push('ConfirmTransaction', { rawSms: pendingSms }));
     setPendingSms(null);
   }, [pendingSms, navigatorReady, routeTick]);
 

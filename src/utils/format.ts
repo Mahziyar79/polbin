@@ -64,6 +64,7 @@ export function formatRelativeDay(iso: string): string {
 
   if (diffDays === 0) return 'امروز';
   if (diffDays === 1) return 'دیروز';
-  if (diffDays < 7) return `${toFaDigits(diffDays)} روز پیش`;
+  // تاریخ آینده (تراکنش دستی با تاریخ جلوتر) نباید «-۳ روز پیش» شود.
+  if (diffDays > 1 && diffDays < 7) return `${toFaDigits(diffDays)} روز پیش`;
   return formatJalaliDate(iso);
 }

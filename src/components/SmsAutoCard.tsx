@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking, Platform, StyleSheet, View } from 'react-native';
 import {
+  hasNotificationPermission,
   hasSmsPermission,
   isSupported,
+  requestNotificationPermission,
   requestSmsPermission,
 } from '../services/smsPermission';
 import { colors, radius, spacing } from '../theme';
@@ -20,6 +22,9 @@ import { Text } from './Text';
 export function SmsAutoCard() {
   const [granted, setGranted] = useState<boolean | null>(null);
   const [blocked, setBlocked] = useState(false);
+  /** پیامک مجاز است ولی نوتیفیکیشن نه — حالتی که کاربر معمولاً متوجهش نمی‌شود. */
+  const [notificationsOff, setNotificationsOff] = useState(false);
+  const [notificationsBlocked, setNotificationsBlocked] = useState(false);
   /**
    * از اندروید ۱۵، مجوز پیامک برای اپ‌هایی که از فروشگاه نصب نشده‌اند «محدود»
    * است: دیالوگ سیستم به‌جای پرسیدن می‌گوید «دسترسی رد شد» و تنها راه، «Allow
@@ -31,6 +36,7 @@ export function SmsAutoCard() {
 
   const refresh = useCallback(() => {
     hasSmsPermission().then(setGranted);
+    hasNotificationPermission().then(ok => setNotificationsOff(!ok));
   }, []);
 
   useEffect(() => {
@@ -55,8 +61,45 @@ export function SmsAutoCard() {
     }
   }
 
+  async function handleEnableNotifications() {
+    setBusy(true);
+    try {
+      const outcome = await requestNotificationPermission();
+      setNotificationsBlocked(outcome === 'blocked');
+      if (outcome === 'granted') setNotificationsOff(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!isSupported()) return null;
+
+  if (granted === true && notificationsOff) {
+    return (
+      <Card style={styles.card}>
+        <View style={styles.header}>
+          <Text style={styles.emoji}>🔕</Text>
+          <Text style={styles.title}>نوتیفیکیشن خاموش است</Text>
+        </View>
+        <Text style={styles.body}>
+          خواندن پیامک روشن است، ولی بدون نوتیفیکیشن فقط وقتی کار می‌کند که پول‌بین باز
+          باشد. پیامکی که موقع بسته بودن اپ برسد، بی‌خبر رد می‌شود.
+        </Text>
+        {notificationsBlocked ? (
+          <AppButton
+            title="روشن کردن از تنظیمات"
+            onPress={() => Linking.openSettings()}
+            variant="secondary"
+          />
+        ) : (
+          <AppButton title="روشن کردن نوتیفیکیشن" onPress={handleEnableNotifications} loading={busy} />
+        )}
+      </Card>
+    );
+  }
+
   // تا وقتی نتیجه‌ی چک نیامده چیزی نشان نمی‌دهیم تا کارت لحظه‌ای پرش نزند.
-  if (!isSupported() || granted !== false) return null;
+  if (granted !== false) return null;
 
   return (
     <Card style={styles.card}>

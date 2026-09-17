@@ -19,6 +19,10 @@ export const STORAGE_KEYS = {
   budget: 'budget.v1',
   installments: 'installments.v1',
   lock: 'lock.v1',
+  /** تلاش‌های ناموفق رمز — جدا از خود قفل تا با هر ذخیره‌ی رمز پاک نشود. */
+  lockAttempts: 'lock.attempts.v1',
+  /** اختلاف‌های مانده‌ای که کاربر گفته «می‌دانم». */
+  gapsDismissed: 'gaps.dismissed.v1',
 } as const;
 
 /**

@@ -89,7 +89,7 @@ class SmsReceiver : BroadcastReceiver() {
 
     val notification =
         NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_edit)
+            .setSmallIcon(R.drawable.ic_stat_polbin)
             .setContentTitle("تراکنش تازه")
             .setContentText("برای ثبت در پول‌بین بزن")
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

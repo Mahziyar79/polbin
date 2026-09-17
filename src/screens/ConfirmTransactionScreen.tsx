@@ -97,7 +97,9 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         type: form.type,
         rawSms,
       });
-      navigation.navigate('Dashboard');
+      // goBack نه navigate('Dashboard'): اگر پیامک دیگری هم در صف است، صفحه‌ی
+      // تاییدش زیر همین است و باید دیده شود، نه اینکه تا داشبورد پرش کنیم.
+      navigation.goBack();
     } catch {
       setSaveError('ثبت تراکنش ناموفق بود. دوباره تلاش کن.');
     } finally {

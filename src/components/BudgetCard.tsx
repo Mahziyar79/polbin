@@ -1,8 +1,15 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { colors, radius, spacing } from '../theme';
+import { forecastMonth } from '../services/forecast';
 import { formatToman, formatTomanShort, toFaDigits } from '../utils/format';
-import { daysLeftInJalaliMonth, jalaliMonthName } from '../utils/jalali';
+import {
+  daysLeftInJalaliMonth,
+  JALALI_MONTHS,
+  jalaliMonthLength,
+  jalaliMonthName,
+  toJalali,
+} from '../utils/jalali';
 import { Card } from './Card';
 import { Text } from './Text';
 
@@ -88,6 +95,15 @@ function BudgetProgressCard({
   // اعتماد به آن خرج می‌کند و آخر ماه قسطش می‌ماند.
   const free = remaining - committed;
 
+  const today = toJalali(new Date());
+  const forecast = forecastMonth({
+    monthly,
+    spent,
+    committed,
+    dayOfMonth: today.jd,
+    monthLength: jalaliMonthLength(today.jy, today.jm),
+  });
+
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
       <Card style={styles.card}>
@@ -141,6 +157,24 @@ function BudgetProgressCard({
             ) : (
               <Text style={styles.over}>قسط‌های این ماه از باقی‌مانده‌ات بیشتر است</Text>
             )}
+
+            {/*
+              پیش‌بینی با روند تا امروز. جمله عمداً با «با این روند» شروع می‌شود تا
+              معلوم باشد حکم نیست، ادامه‌ی خط فعلی است — و کاربر بفهمد با کم کردن
+              خرج، عدد عوض می‌شود.
+            */}
+            {forecast?.kind === 'over' ? (
+              <Text style={styles.forecastOver}>
+                {forecast.runsOutDay !== null
+                  ? `با این روند ${toFaDigits(forecast.runsOutDay)} ${JALALI_MONTHS[today.jm - 1]} بودجه تمام می‌شود و آخر ماه ${formatTomanShort(forecast.overBy)} بالای سقف می‌روی`
+                  : `با این روند آخر ماه ${formatTomanShort(forecast.overBy)} بالای سقف می‌روی`}
+              </Text>
+            ) : null}
+            {forecast?.kind === 'under' && forecast.leftover > 0 ? (
+              <Text style={styles.forecastUnder}>
+                {`با این روند آخر ماه حدود ${formatTomanShort(forecast.leftover)} اضافه می‌آوری`}
+              </Text>
+            ) : null}
           </>
         ) : (
           <Text style={styles.over}>
@@ -168,6 +202,18 @@ const styles = StyleSheet.create({
   amounts: { fontSize: 13, color: colors.textMuted },
   hint: { fontSize: 12, color: colors.textFaint, lineHeight: 22 },
   over: { fontSize: 12, color: colors.expense, fontWeight: '700', lineHeight: 22 },
+  forecastOver: {
+    fontSize: 12,
+    color: colors.text,
+    fontWeight: '700',
+    lineHeight: 22,
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    backgroundColor: '#FFF7E0',
+  },
+  forecastUnder: { fontSize: 12, color: colors.success, fontWeight: '700', lineHeight: 22, marginTop: spacing.xs },
 
   emptyCard: { gap: spacing.xs, borderStyle: 'dashed', borderColor: colors.primary },
   emptyTitle: { fontSize: 14, fontWeight: '800', color: colors.text },

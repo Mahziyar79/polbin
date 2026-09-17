@@ -79,6 +79,7 @@ src/
   screens/      دوازده صفحه
   services/     smsParser (regex) · analytics (مجموع و تفکیک) · installments (سررسید اقساط)
                 duplicates (تشخیص تراکنش تکراری) · balances (موجودی هر کارت از پیامک)
+                gaps (کشف تراکنش بی‌پیامک از اختلاف مانده‌ها) · forecast (پیش‌بینی آخر ماه)
                 lock + lockPolicy (رمز و اثر انگشت؛ هش در ماژول نیتیو PolbinLock)
                 fakeApi (لایه‌ی جعلی شبکه) · storage (MMKV)
                 backup (JSON) · xlsx (اکسل، بدون کتابخانه) · reportHtml (PDF) · deviceFiles (ماژول نیتیو) · shareIntent

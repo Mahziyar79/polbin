@@ -11,6 +11,24 @@ import {
   verifyPin,
 } from '../services/lock';
 import { cooldownMs, shouldLockOnResume } from '../services/lockPolicy';
+import { readJSON, removeKey, STORAGE_KEYS, writeJSON } from '../services/storage';
+
+/**
+ * روی گوشی می‌ماند، نه فقط در حافظه: وگرنه بستن و باز کردن اپ شمارنده را صفر
+ * می‌کرد و فاصله‌ی اجباری بین حدس‌ها بی‌اثر می‌شد.
+ */
+interface Attempts {
+  failed: number;
+  cooldownUntil: number;
+}
+
+function readAttempts(): Attempts {
+  const stored = readJSON<Partial<Attempts>>(STORAGE_KEYS.lockAttempts, {});
+  return {
+    failed: typeof stored.failed === 'number' ? stored.failed : 0,
+    cooldownUntil: typeof stored.cooldownUntil === 'number' ? stored.cooldownUntil : 0,
+  };
+}
 
 interface LockContextValue {
   /** ماژول نیتیو هست؟ اگر نه، تنظیمات قفل نمایش داده نمی‌شود. */
@@ -47,8 +65,8 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
   const available = isLockAvailable();
   const [config, setConfig] = useState<LockConfig | null>(() => (available ? readLockConfig() : null));
   const [locked, setLocked] = useState<boolean>(() => available && readLockConfig() !== null);
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [failedAttempts, setFailedAttempts] = useState(() => readAttempts().failed);
+  const [cooldownUntil, setCooldownUntil] = useState(() => readAttempts().cooldownUntil);
 
   const backgroundAt = useRef<number | null>(null);
   const configRef = useRef(config);
@@ -75,13 +93,16 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
     setLocked(false);
     setFailedAttempts(0);
     setCooldownUntil(0);
+    removeKey(STORAGE_KEYS.lockAttempts);
   }, []);
 
   const registerFailure = useCallback(() => {
     setFailedAttempts(current => {
       const next = current + 1;
       const wait = cooldownMs(next);
-      if (wait > 0) setCooldownUntil(Date.now() + wait);
+      const until = wait > 0 ? Date.now() + wait : 0;
+      if (wait > 0) setCooldownUntil(until);
+      writeJSON(STORAGE_KEYS.lockAttempts, { failed: next, cooldownUntil: until } satisfies Attempts);
       return next;
     });
   }, []);

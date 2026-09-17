@@ -73,6 +73,21 @@ class SmsFilterTest {
   }
 
   @Test
+  fun `هشدار موجودی اپراتور رد می‌شود`() {
+    val sms =
+        """مشترک گرامی 989385818976،
+موجودی حساب اصلی شما به کمتر از 100,000 ریال رسیده است. لطفا جهت مدیریت مصرف وافزایش حساب یا خرید بسته اینترنتی به اپلیکیشن ایرانسل من مراجعه کنید:
+https://my.irancell.ir/dlp?id=main&ph=989385818976"""
+    assertFalse(SmsFilter.looksLikeBankSms(sms))
+  }
+
+  @Test
+  fun `هر پیامکی که لینک دارد رد می‌شود`() {
+    assertFalse(SmsFilter.looksLikeBankSms("برداشت 250,000 ریال از حساب شما. جزئیات: www.bank.ir/x"))
+    assertFalse(SmsFilter.looksLikeBankSms("خرید 250,000 ریال کارت 1234 مانده 5,000,000 https://t.co/a"))
+  }
+
+  @Test
   fun `رمز پویا رد می‌شود چون خودش تراکنش نیست`() {
     val sms = "رمز یکبار مصرف: 84213 مبلغ 1,500,000 ریال کارت ****3421"
     assertFalse(SmsFilter.looksLikeBankSms(sms))

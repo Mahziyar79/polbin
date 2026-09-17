@@ -33,6 +33,13 @@ class PolbinFilesModule(private val reactContext: ReactApplicationContext) :
 
   private var pickPromise: Promise? = null
 
+  /**
+   * مستندات اندروید صریح می‌گوید تا وقتی adapter به PrintManager داده نشده،
+   * WebView باید جایی نگه داشته شود؛ وگرنه ممکن است قبل از onPageFinished جمع
+   * شود و پنجره‌ی چاپ هیچ‌وقت باز نشود. متغیر محلی داخل lambda این تضمین را ندارد.
+   */
+  private var printingWebView: WebView? = null
+
   private val activityListener: ActivityEventListener =
       object : BaseActivityEventListener() {
         override fun onActivityResult(
@@ -164,6 +171,7 @@ class PolbinFilesModule(private val reactContext: ReactApplicationContext) :
     activity.runOnUiThread {
       try {
         val webView = WebView(activity)
+        printingWebView = webView
         webView.webViewClient =
             object : WebViewClient() {
               override fun onPageFinished(view: WebView, url: String) {
@@ -178,6 +186,7 @@ class PolbinFilesModule(private val reactContext: ReactApplicationContext) :
                         .build(),
                 )
 
+                printingWebView = null
                 promise.resolve(true)
               }
             }

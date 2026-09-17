@@ -21,6 +21,28 @@ export async function hasSmsPermission(): Promise<boolean> {
   return PermissionsAndroid.check(RECEIVE_SMS);
 }
 
+/**
+ * نوتیفیکیشن مجاز است؟ قبل از اندروید ۱۳ همیشه بله.
+ *
+ * بدون آن، خواندن خودکار فقط وقتی کار می‌کند که اپ جلوی چشم باشد: پیامکی که
+ * موقع بسته بودن اپ می‌رسد به نوتیفیکیشن تبدیل می‌شود که هیچ‌وقت دیده نمی‌شود.
+ */
+export async function hasNotificationPermission(): Promise<boolean> {
+  if (!isSupported()) return false;
+  if (!NEEDS_NOTIFICATION_PERMISSION) return true;
+  return PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+}
+
+/** درخواست دوباره‌ی نوتیفیکیشن؛ اگر «دیگر نپرس» خورده باشد، فقط تنظیمات می‌ماند. */
+export async function requestNotificationPermission(): Promise<PermissionOutcome> {
+  if (!isSupported()) return 'denied';
+  if (!NEEDS_NOTIFICATION_PERMISSION) return 'granted';
+
+  const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+  if (result === PermissionsAndroid.RESULTS.GRANTED) return 'granted';
+  return result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN ? 'blocked' : 'denied';
+}
+
 export type PermissionOutcome = 'granted' | 'denied' | 'blocked';
 
 /**

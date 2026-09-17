@@ -379,6 +379,8 @@ export function TransactionsScreen({ navigation, route }: Props) {
         onSelect={date => {
           if (customPicker === 'to') {
             setCustomTo(endOfDay(date));
+            // «تا» قبل از «از» یعنی بازه‌ی خالی؛ «از» به همان روز می‌آید.
+            if (startOfDay(date).getTime() < customFrom.getTime()) setCustomFrom(startOfDay(date));
             setCustomPicker(null);
           } else {
             setCustomFrom(startOfDay(date));

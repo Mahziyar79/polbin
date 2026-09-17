@@ -8,27 +8,17 @@ import { parseSms } from './smsParser';
  * TODO: جایگزینی با fetch به BASE_URL بک‌اند.
  */
 
-const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
-
-/** POST /sms/parse — همان کاری که بک‌اند با regex انجام می‌دهد. */
-export async function parseSmsRemote(raw: string): Promise<ParsedSms> {
-  await delay(600);
-  return parseSms(raw);
-}
-
 /**
- * GET /transactions
+ * POST /sms/parse — همان کاری که بک‌اند با regex انجام می‌دهد.
  *
- * تا وقتی بک‌اند وصل نشده، کاربر جدید با لیست خالی شروع می‌کند —
- * نه با داده‌ی نمونه‌ی یک نفر دیگر.
+ * تأخیر ساختگی ندارد: قبلاً ۶۰۰ میلی‌ثانیه «در حال خواندن پیامک…» نشان می‌داد
+ * برای کاری که روی خود گوشی یک میلی‌ثانیه طول می‌کشد.
  */
-export async function fetchTransactions(): Promise<Transaction[]> {
-  await delay(200);
-  return [];
+export async function parseSmsRemote(raw: string): Promise<ParsedSms> {
+  return parseSms(raw);
 }
 
 /** POST /transactions */
 export async function createTransaction(input: Omit<Transaction, 'id'>): Promise<Transaction> {
-  await delay(450);
-  return { ...input, id: `tx_${Date.now()}` };
+  return { ...input, id: `tx_${Date.now()}_${Math.floor(Math.random() * 1e6)}` };
 }
