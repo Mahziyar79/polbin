@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- آیکون نوار وضعیت: باید تک‌رنگ سفید روی شفاف باشد؛ سیستم خودش رنگش می‌کند.
-     یک کارت با دو خط — همان حس «تراکنش». -->
+<!-- آیکون نوار وضعیت: همان نشان اپ، تک‌رنگ سفید روی شفاف؛ سیستم رنگش می‌کند.
+     در این اندازه سه نقطه به هم می‌چسبند، پس کمی بزرگ‌تر و بازترند. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:viewportWidth="200"
+    android:viewportHeight="200">
   <path
-      android:fillColor="#FFFFFF"
-      android:pathData="M4,5h16c1.1,0 2,0.9 2,2v10c0,1.1 -0.9,2 -2,2H4c-1.1,0 -2,-0.9 -2,-2V7c0,-1.1 0.9,-2 2,-2zM4,9v2h16V9H4zM6,13v2h6v-2H6z"/>
+      android:pathData="M44,52v34a28,28 0 0 0 28,28h56a28,28 0 0 0 28,-28V52"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="26"
+      android:strokeLineCap="round"/>
+  <path android:fillColor="#FFFFFF" android:pathData="M66,158m-13,0a13,13 0 1,0 26,0a13,13 0 1,0 -26,0"/>
+  <path android:fillColor="#FFFFFF" android:pathData="M100,158m-13,0a13,13 0 1,0 26,0a13,13 0 1,0 -26,0"/>
+  <path android:fillColor="#FFFFFF" android:pathData="M134,158m-13,0a13,13 0 1,0 26,0a13,13 0 1,0 -26,0"/>
 </vector>
