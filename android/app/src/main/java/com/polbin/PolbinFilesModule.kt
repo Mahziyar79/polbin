@@ -132,6 +132,17 @@ class PolbinFilesModule(private val reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * متنی که MainActivity قبل از آماده شدن JS گرفته (نوتیفیکیشن یا هم‌رسانی
+   * روی پروسه‌ی مرده). یک بار برمی‌گردد و پاک می‌شود؛ null یعنی چیزی نبود.
+   */
+  @ReactMethod
+  fun takePendingSharedText(promise: Promise) {
+    val text = MainActivity.pendingSharedText
+    MainActivity.pendingSharedText = null
+    promise.resolve(text)
+  }
+
   /** انتخاب یک فایل متنی و برگرداندن محتوایش. اگر کاربر منصرف شود null می‌دهد. */
   @ReactMethod
   fun pickTextFile(promise: Promise) {

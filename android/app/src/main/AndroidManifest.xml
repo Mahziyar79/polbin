@@ -3,7 +3,7 @@
     <!-- INTERNET عمداً اینجا نیست؛ فقط در src/debug برای Metro. اپ سرور ندارد. -->
 
     <!-- خواندن خودکار پیامک بانکی. پیامک از گوشی خارج نمی‌شود؛ متن فقط از
-         SmsReceiver به صفحه‌ی تایید می‌رود و هیچ‌جا ذخیره نمی‌شود. -->
+         TransactionSmsReceiver به صفحه‌ی تایید می‌رود و هیچ‌جا ذخیره نمی‌شود. -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -37,11 +37,14 @@
 
       <!-- پیامک تازه را می‌گیرد. android:permission تضمین می‌کند فقط خود
            سیستم می‌تواند این broadcast را بفرستد، نه اپ‌های دیگر. -->
+      <!-- بدون android:priority. اولویت بالا برای اپی که فقط می‌خواند و broadcast را
+           قطع نمی‌کند هیچ فایده‌ای نداشت، ولی الگوی شناخته‌شده‌ی بدافزارهای دزد پیامک
+           است و «سپر امنیت بازار» (کسپرسکی) همین را نشانه گرفت. -->
       <receiver
-        android:name=".SmsReceiver"
+        android:name=".TransactionSmsReceiver"
         android:exported="true"
         android:permission="android.permission.BROADCAST_SMS">
-        <intent-filter android:priority="999">
+        <intent-filter>
             <action android:name="android.provider.Telephony.SMS_RECEIVED" />
         </intent-filter>
       </receiver>

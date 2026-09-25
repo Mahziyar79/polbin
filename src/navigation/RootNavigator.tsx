@@ -5,7 +5,7 @@ import {
   StackActions,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AddInstallmentScreen } from '../screens/AddInstallmentScreen';
 import { AddTransactionScreen } from '../screens/AddTransactionScreen';
 import { BackupScreen } from '../screens/BackupScreen';
@@ -20,7 +20,7 @@ import { InstallmentsScreen } from '../screens/InstallmentsScreen';
 import { LockSettingsScreen } from '../screens/LockSettingsScreen';
 import { TransactionsScreen } from '../screens/TransactionsScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
-import { subscribeToSharedText } from '../services/shareIntent';
+import { subscribeToSharedText, takePendingSharedText } from '../services/shareIntent';
 import { readJSON, STORAGE_KEYS } from '../services/storage';
 import { colors } from '../theme';
 import { RootStackParamList } from './types';
@@ -65,7 +65,39 @@ export function RootNavigator({ initialSharedText }: { initialSharedText?: strin
   const pendingRef = useRef<string | null>(pendingSms);
   pendingRef.current = pendingSms;
 
-  useEffect(() => subscribeToSharedText(setPendingSms), []);
+  /**
+   * یک متن ممکن است از دو راه برسد: رویداد، و متنِ نگه‌داشته‌شده در نیتیو (وقتی
+   * پروسه مرده بوده و JS تازه بالا آمده). هر دو راه همان پیامک را می‌دهند؛ اگر
+   * همان متن در چند ثانیه‌ی اخیر گرفته شده، دومی نادیده گرفته می‌شود.
+   */
+  const recent = useRef<{ text: string; at: number } | null>(null);
+  const accept = useCallback((text: string) => {
+    const now = Date.now();
+    if (recent.current && recent.current.text === text && now - recent.current.at < 10_000) return;
+    recent.current = { text, at: now };
+    setPendingSms(text);
+  }, []);
+
+  useEffect(
+    () =>
+      subscribeToSharedText(text => {
+        accept(text);
+        // نسخه‌ی نگه‌داشته‌شده‌ی همین متن دیگر لازم نیست.
+        takePendingSharedText();
+      }),
+    [accept],
+  );
+
+  // متنی که قبل از بالا آمدن JS رسیده — بعد از mount یک بار پرسیده می‌شود.
+  useEffect(() => {
+    let mounted = true;
+    takePendingSharedText().then(text => {
+      if (mounted && text) accept(text);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [accept]);
 
   useEffect(() => {
     if (!pendingSms || !navigatorReady || !navigationRef.isReady()) return;

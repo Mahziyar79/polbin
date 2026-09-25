@@ -22,13 +22,13 @@ import com.facebook.react.common.LifecycleState
  * دو مسیر، بسته به اینکه اپ باز است یا نه:
  *  - اپ جلوی چشم کاربر است: متن را به‌صورت رویداد می‌فرستیم و صفحه‌ی تایید
  *    همان‌جا باز می‌شود.
- *  - اپ بسته یا در پس‌زمینه است: یک نوتیفیکیشن می‌گذاریم که با لمسش اپ با
- *    همان ACTION_SEND باز می‌شود — دقیقاً همان مسیری که «هم‌رسانی» می‌سازد،
- *    پس هیچ کد جدیدی در سمت جاوااسکریپت لازم نیست.
+ *  - اپ بسته یا در پس‌زمینه است: یک نوتیفیکیشن می‌گذاریم که با لمسش اپ با یک
+ *    action اختصاصی باز می‌شود و MainActivity متن را به همان مسیرِ «هم‌رسانی»
+ *    در جاوااسکریپت می‌رساند.
  *
  * متن پیامک هیچ‌جا ذخیره نمی‌شود؛ فقط از اینجا به صفحه‌ی تایید می‌رود.
  */
-class SmsReceiver : BroadcastReceiver() {
+class TransactionSmsReceiver : BroadcastReceiver() {
 
   override fun onReceive(context: Context, intent: Intent) {
     if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
@@ -70,12 +70,14 @@ class SmsReceiver : BroadcastReceiver() {
       )
     }
 
-    // همان intentی که منوی «هم‌رسانی» می‌سازد، تا اپ مسیر آشنا را برود.
+    // action اختصاصی، نه ACTION_SEND. قبلاً همان intent هم‌رسانی ساخته می‌شد تا
+    // MainActivity یک مسیر داشته باشد؛ ولی «متن پیامک → ACTION_SEND» دقیقاً
+    // امضای بدافزاری است که پیامک را به اپ دیگری می‌فرستد، و آنتی‌ویروس بازار
+    // همین را گرفت. MainActivity هر دو را می‌فهمد.
     val open =
         Intent(context, MainActivity::class.java).apply {
-          action = Intent.ACTION_SEND
-          type = "text/plain"
-          putExtra(Intent.EXTRA_TEXT, body)
+          action = MainActivity.ACTION_CONFIRM_TRANSACTION
+          putExtra(MainActivity.EXTRA_SMS_TEXT, body)
           addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 
