@@ -153,6 +153,17 @@ ${String(today.jm).padStart(2, '0')}/${String(today.jd).padStart(2, '0')}-08:32`
     expect(parseSms('1404/06/14 برداشت 250000 ریال').amount).toBe(25000);
   });
 
+  it('«کارت به کارت» مبلغ است و چهار رقم کارت مبلغ نیست', () => {
+    const grouped = parseSms('بانک ملت انتقال وجه کارت به کارت 5,000,000 ریال از کارت ****9876 مانده 90,000,000 ریال');
+    expect(grouped.amount).toBe(500_000);
+    expect(grouped.cardLast4).toBe('9876');
+    expect(grouped.balance).toBe(9_000_000);
+
+    expect(parseSms('کارت به کارت 5000000 ریال از کارت ****9876').amount).toBe(500_000);
+    // بدون جداکننده و بدون واحد، شماره‌ی چسبیده به «حساب» همچنان شماره است.
+    expect(parseSms('حساب419675840 خرید 1,190,000 ریال').amount).toBe(119_000);
+  });
+
   it('ریالِ فرد به تومانِ صحیح گرد می‌شود', () => {
     expect(parseSms('خرید مبلغ 250,001 ریال').amount).toBe(25000);
     expect(parseSms('خرید مبلغ 12,345 ریال').amount).toBe(1235);

@@ -45,6 +45,11 @@ export interface Transaction {
   balance?: number;
   type: TransactionType;
   rawSms?: string;
+  /**
+   * انتقال بین حساب‌های خودِ کاربر (کارت‌به‌کارت از کارت A به کارت B).
+   * در فهرست می‌ماند ولی در هیچ جمعِ خرج و درآمدی نمی‌آید.
+   */
+  internalTransfer?: boolean;
 }
 
 /** خروجی سرویس پارس پیامک (در نسخه‌ی نهایی از بک‌اند می‌آید). */

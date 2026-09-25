@@ -44,14 +44,15 @@ export function buildReportHtml({ transactions, categories, periodLabel }: Repor
     .map(tx => {
       const category = resolveCategory(categories, tx.categoryId, tx.type);
       const isIncome = tx.type === 'credit';
+      const transfer = Boolean(tx.internalTransfer);
 
       return `
         <tr>
           <td>${shortJalali(tx.date)}</td>
           <td>${escapeHtml(tx.merchant)}</td>
-          <td>${escapeHtml(category.label)}</td>
-          <td class="${isIncome ? 'income' : 'expense'}">
-            ${isIncome ? '+' : '−'} ${escapeHtml(formatToman(tx.amount, false))}
+          <td>${transfer ? 'انتقال داخلی' : escapeHtml(category.label)}</td>
+          <td class="${transfer ? 'transfer' : isIncome ? 'income' : 'expense'}">
+            ${transfer ? '⇄' : isIncome ? '+' : '−'} ${escapeHtml(formatToman(tx.amount, false))}
           </td>
         </tr>`;
     })
@@ -83,6 +84,7 @@ export function buildReportHtml({ transactions, categories, periodLabel }: Repor
   .card strong { font-size: 14px; }
   .expense { color: #C0554F; }
   .income { color: #16B86A; }
+  .transfer { color: #8FA9AF; }
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: right; padding: 7px 8px; border-bottom: 1px solid #E8EFED; }
   th { background: #F1F6F5; font-size: 11px; color: #51696F; }

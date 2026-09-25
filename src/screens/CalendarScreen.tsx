@@ -7,6 +7,7 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { TransactionRow } from '../components/TransactionRow';
 import { RootStackParamList } from '../navigation/types';
 import { balanceOf, dayKey, groupByDay } from '../services/analytics';
+import { countable } from '../services/transfers';
 import { DueInstallment, expand } from '../services/installments';
 import { useInstallments } from '../state/InstallmentsContext';
 import { useTransactions } from '../state/TransactionsContext';
@@ -31,8 +32,9 @@ interface DayCell {
   key: string;
 }
 
+/** جمع گروه، بدون انتقال داخلی — همان قاعده‌ی داشبورد. */
 function sumOf(transactions: Transaction[]): number {
-  return transactions.reduce((sum, tx) => sum + tx.amount, 0);
+  return countable(transactions).reduce((sum, tx) => sum + tx.amount, 0);
 }
 
 export function CalendarScreen({ navigation }: Props) {

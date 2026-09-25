@@ -141,7 +141,10 @@ function extractAmounts(text: string): AmountMatch[] {
     // به‌جای lookbehind: ۲۵ کاراکترِ قبل از عدد را نگاه می‌کنیم و
     // جداکننده‌های چسبیده به عدد را کنار می‌گذاریم تا به خود برچسب برسیم.
     const before = text.slice(Math.max(0, match.index - 25), match.index);
-    const label = before.replace(/[\s:.\-–—]+$/, '');
+    // ستاره هم جداکننده است: «کارت ****9876» باید به برچسب «کارت» برسد.
+    const label = before.replace(/[\s:.\-–—*]+$/, '');
+    const grouped = match[1].includes(',');
+    const hasUnit = Boolean(match[2]);
 
     // ترتیب مهم است: «مانده حساب» هم به «حساب» ختم می‌شود، پس اول مانده.
     if (BALANCE_LABEL.test(label)) {
@@ -150,19 +153,22 @@ function extractAmounts(text: string): AmountMatch[] {
         currency: match[2] === 'تومان' ? 'toman' : 'rial',
         isBalance: true,
         labelled: false,
-        grouped: match[1].includes(','),
+        grouped,
       });
       continue;
     }
 
-    if (IDENTIFIER_LABEL.test(label)) continue;
+    // شماره‌ی کارت و حساب نه جداکننده‌ی هزارگان دارد نه واحد پول. «کارت به کارت
+    // 5,000,000 ریال» با «کارت» تمام می‌شود ولی مبلغ است؛ قبلاً رد می‌شد و چهار رقم
+    // کارت («****9876») مبلغ خوانده می‌شد.
+    if (IDENTIFIER_LABEL.test(label) && !grouped && !hasUnit) continue;
 
     results.push({
       value: Number(digits),
       currency: match[2] === 'تومان' ? 'toman' : 'rial',
       isBalance: false,
       labelled: SPEND_LABEL.test(label),
-      grouped: match[1].includes(','),
+      grouped,
     });
   }
 

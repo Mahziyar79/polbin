@@ -6,6 +6,7 @@ import {
   TransactionType,
 } from '../types';
 import { jalaliMonthRange } from '../utils/jalali';
+import { countable } from './transfers';
 
 /**
  * ابتدای روزی که `daysAgo` روز قبل از امروز است.
@@ -60,15 +61,16 @@ export function groupByDay(transactions: Transaction[]): Map<string, Transaction
   return groups;
 }
 
+/** انتقال داخلی خرج نیست — همه‌ی جمع‌ها آن را کنار می‌گذارند. */
 export function totalSpend(transactions: Transaction[]): number {
-  return transactions
+  return countable(transactions)
     .filter(t => t.type === 'debit')
     .reduce((sum, t) => sum + t.amount, 0);
 }
 
 /** جمع واریزها. */
 export function totalIncome(transactions: Transaction[]): number {
-  return transactions
+  return countable(transactions)
     .filter(t => t.type === 'credit')
     .reduce((sum, t) => sum + t.amount, 0);
 }
@@ -84,7 +86,7 @@ export function buildBreakdown(
   categories: Category[],
   type: TransactionType = 'debit',
 ): CategoryBreakdown[] {
-  const matching = transactions.filter(t => t.type === type);
+  const matching = countable(transactions).filter(t => t.type === type);
   const total = matching.reduce((sum, t) => sum + t.amount, 0);
 
   const buckets = new Map<string, { total: number; count: number }>();

@@ -37,13 +37,18 @@ export function TransactionRow({ tx, highlighted, onPress }: Props) {
           «۶ شهریور» شبیه «۶ ۰ شهریور» دیده می‌شد.
         */}
         <Text style={styles.meta} numberOfLines={1}>
-          {`${category.label}، ${formatRelativeDay(tx.date)}، ${formatTime(tx.date)}`}
+          {`${tx.internalTransfer ? 'انتقال داخلی' : category.label}، ${formatRelativeDay(tx.date)}، ${formatTime(tx.date)}`}
         </Text>
       </View>
 
       <View style={styles.trailing}>
-        <Text style={[styles.amount, tx.type === 'credit' ? styles.credit : styles.debit]}>
-          {tx.type === 'credit' ? '+' : '−'} {formatToman(tx.amount, false)}
+        {/* انتقال داخلی نه سبز است نه قرمز: پولی که جابه‌جا شده، نه رفته نه آمده. */}
+        <Text
+          style={[
+            styles.amount,
+            tx.internalTransfer ? styles.transfer : tx.type === 'credit' ? styles.credit : styles.debit,
+          ]}>
+          {tx.internalTransfer ? '⇄' : tx.type === 'credit' ? '+' : '−'} {formatToman(tx.amount, false)}
         </Text>
         {bank ? <BankMark bank={bank} size={22} /> : null}
       </View>
@@ -86,4 +91,5 @@ const styles = StyleSheet.create({
   amount: { fontSize: 14, fontWeight: '800' },
   debit: { color: colors.text },
   credit: { color: colors.success },
+  transfer: { color: colors.textFaint },
 });

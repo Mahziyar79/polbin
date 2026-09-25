@@ -289,7 +289,7 @@ export function transactionRows(transactions: Transaction[], categories: Categor
     rows.push([
       { text: formatJalaliDate(tx.date) },
       { text: formatTime(tx.date) },
-      { text: tx.type === 'debit' ? 'خرج' : 'درآمد' },
+      { text: tx.internalTransfer ? 'انتقال داخلی' : tx.type === 'debit' ? 'خرج' : 'درآمد' },
       { number: tx.amount },
       { text: tx.merchant },
       { text: labelOf(categories, tx.categoryId) },

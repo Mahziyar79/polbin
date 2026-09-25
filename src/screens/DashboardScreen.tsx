@@ -10,6 +10,7 @@ import { BalancesCard } from '../components/BalancesCard';
 import { GapCard } from '../components/GapCard';
 import { useDismissedGaps } from '../hooks/useDismissedGaps';
 import { findBalanceGaps } from '../services/gaps';
+import { countable } from '../services/transfers';
 import { BudgetCard } from '../components/BudgetCard';
 import { InstallmentsCard } from '../components/InstallmentsCard';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -198,7 +199,7 @@ export function DashboardScreen({ navigation }: Props) {
             {formatToman(isExpense ? total : income)}
           </Text>
           <Text style={styles.summaryMeta}>
-            {toFaDigits(periodTransactions.length)} تراکنش {activePeriod.summary}
+            {toFaDigits(countable(periodTransactions).length)} تراکنش {activePeriod.summary}
           </Text>
 
           <View style={styles.statsRow}>

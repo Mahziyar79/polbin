@@ -12,6 +12,7 @@ import {
 import { Card } from '../components/Card';
 import { ConfidenceBar } from '../components/ConfidenceBar';
 import { DuplicateCard } from '../components/DuplicateCard';
+import { TransferCard } from '../components/TransferCard';
 import { FormFooter } from '../components/FormFooter';
 import { FormScreenHeader } from '../components/FormScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -21,9 +22,10 @@ import { RootStackParamList } from '../navigation/types';
 import { DuplicateMatch, findDuplicate } from '../services/duplicates';
 import { parseSmsRemote } from '../services/fakeApi';
 import { buildSmsReport } from '../services/smsReport';
+import { findTransferCounterpart } from '../services/transfers';
 import { useTransactions } from '../state/TransactionsContext';
 import { colors, spacing } from '../theme';
-import { ParsedSms } from '../types';
+import { ParsedSms, Transaction } from '../types';
 import { toFaDigits } from '../utils/format';
 import { Text } from '../components/Text';
 
@@ -31,7 +33,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ConfirmTransaction'>;
 
 export function ConfirmTransactionScreen({ route, navigation }: Props) {
   const { rawSms } = route.params;
-  const { transactions, addTransaction } = useTransactions();
+  const { transactions, addTransaction, updateTransaction } = useTransactions();
   const form = useTransactionForm();
   const { setValues } = form;
 
@@ -46,6 +48,13 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
    * «تراکنش جدید است» هم یک بار برای همیشه کارت را برمی‌دارد.
    */
   const [duplicate, setDuplicate] = useState<DuplicateMatch | null>(null);
+
+  /**
+   * سرِ دیگرِ یک انتقال داخلی، اگر پیدا شد؛ مثل تکراری، یک بار لحظه‌ی پارس.
+   * `transferDecision` جواب کاربر است: null یعنی هنوز نپرسیده‌ایم/جواب نداده.
+   */
+  const [counterpart, setCounterpart] = useState<Transaction | null>(null);
+  const [transferDecision, setTransferDecision] = useState<boolean | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -64,6 +73,22 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
           transactions,
         ),
       );
+      setCounterpart(
+        result.amount
+          ? findTransferCounterpart(
+              {
+                amount: result.amount,
+                type: result.type,
+                date: result.date,
+                bank: result.bank,
+                cardLast4: result.cardLast4,
+                accountLast4: result.accountLast4,
+              },
+              transactions,
+            )
+          : null,
+      );
+      setTransferDecision(null);
       setValues({
         amount: result.amount,
         merchant: result.merchant,
@@ -96,7 +121,12 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         balance: parsed.balance ?? undefined,
         type: form.type,
         rawSms,
+        internalTransfer: transferDecision === true ? true : undefined,
       });
+      // سرِ دیگر هم باید نشان بخورد، وگرنه نصف انتقال هنوز خرج شمرده می‌شود.
+      if (transferDecision === true && counterpart && !counterpart.internalTransfer) {
+        updateTransaction(counterpart.id, { internalTransfer: true });
+      }
       // goBack نه navigate('Dashboard'): اگر پیامک دیگری هم در صف است، صفحه‌ی
       // تاییدش زیر همین است و باید دیده شود، نه اینکه تا داشبورد پرش کنیم.
       navigation.goBack();
@@ -156,6 +186,20 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
             match={duplicate}
             onSkip={() => navigation.goBack()}
             onDismiss={() => setDuplicate(null)}
+          />
+        ) : null}
+
+        {counterpart && !duplicate ? (
+          <TransferCard
+            counterpart={counterpart}
+            type={form.type}
+            decision={transferDecision}
+            onDecide={value => {
+              setTransferDecision(value);
+              // پیامک واریز فروشگاه ندارد و بدون آن دکمه‌ی ثبت خاموش می‌ماند؛ برای
+              // انتقال، اسم خودش معلوم است.
+              if (value && form.merchant.trim().length === 0) form.setMerchant('انتقال بین حساب‌ها');
+            }}
           />
         ) : null}
 

@@ -42,7 +42,7 @@
 
 تراکنش از دو راه وارد می‌شود:
 
-- **خودکار** — [SmsReceiver.kt](android/app/src/main/java/com/polbin/SmsReceiver.kt)
+- **خودکار** — [TransactionSmsReceiver.kt](android/app/src/main/java/com/polbin/TransactionSmsReceiver.kt)
   پیامک تازه را می‌گیرد. اپ باز باشد → صفحه‌ی تایید؛ بسته باشد → نوتیفیکیشن.
   مجوزش اختیاری است و از کارت داشبورد گرفته می‌شود.
 - **دستی** — منوی «هم‌رسانی» اندروید؛ بدون مجوز پیامک هم کار می‌کند.
@@ -80,6 +80,7 @@ src/
   services/     smsParser (regex) · analytics (مجموع و تفکیک) · installments (سررسید اقساط)
                 duplicates (تشخیص تراکنش تکراری) · balances (موجودی هر کارت از پیامک)
                 gaps (کشف تراکنش بی‌پیامک از اختلاف مانده‌ها) · forecast (پیش‌بینی آخر ماه)
+                transfers (انتقال بین حساب‌های خودِ کاربر — در جمع‌ها نمی‌آید)
                 lock + lockPolicy (رمز و اثر انگشت؛ هش در ماژول نیتیو PolbinLock)
                 fakeApi (لایه‌ی جعلی شبکه) · storage (MMKV)
                 backup (JSON) · xlsx (اکسل، بدون کتابخانه) · reportHtml (PDF) · deviceFiles (ماژول نیتیو) · shareIntent
