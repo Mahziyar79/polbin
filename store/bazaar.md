@@ -131,8 +131,8 @@ APK قبول کرد، `armeabi-v7a` را هم بده؛ وگرنه فقط همی�
 
 بازار یا یک `aab` می‌خواهد یا چند `apk`. **دو APK را بارگذاری کن**، هر دو از یک بیلد:
 
-- `app-arm64-v8a-release.apk` (versionCode 2002)
-- `app-armeabi-v7a-release.apk` (versionCode 1002)
+- `app-arm64-v8a-release.apk` (versionCode 2003)
+- `app-armeabi-v7a-release.apk` (versionCode 1003)
 
 `x86`/`x86_64` فقط برای شبیه‌ساز است؛ بارگذاری نکن. AAB نده: بازار برای ساختن
 APK از روی AAB به کلید امضا نیاز دارد و کلید نباید از این دستگاه بیرون برود.
@@ -158,7 +158,7 @@ versionCode هر APK از روی معماری ساخته می‌شود (`build.g
 
 ## نکته‌های فرم
 
-- `versionName` = 1.0.1، `versionCode` پایه = 2 (در APKها ۱۰۰۲ و ۲۰۰۲ دیده می‌شود).
+- `versionName` = 1.0.2، `versionCode` پایه = 3 (در APKها ۱۰۰۳ و ۲۰۰۳ دیده می‌شود).
   برای هر آپدیت فقط `versionCode` پایه را در `build.gradle` بالا ببر؛ هر دو APK
   خودشان جلو می‌روند.
 - اگر مجوز پیامک رد شد: نسخه‌ای بدون `RECEIVE_SMS` بساز (فقط همان خط مانیفست) و
