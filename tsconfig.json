@@ -1,5 +1,7 @@
 {
   "extends": "@react-native/typescript-config",
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/node_modules", "**/Pods"]
+  // `site/` کد مرورگر است، نه ری‌اکت‌نیتیو؛ tsconfig خودش را دارد تا تایپ‌های
+  // DOM به کد اپ نشت نکند و کسی به اشتباه در اپ `document` صدا نزند.
+  "exclude": ["**/node_modules", "**/Pods", "site"]
 }

@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2019", "dom"],
+    "types": [],
+    "noEmit": true
+  },
+  "include": ["demo.ts", "../src/**/*.ts"],
+  "exclude": []
+}
