@@ -28,6 +28,9 @@ const TYPES = [
   { value: 'credit', label: 'درآمد', color: colors.success, tint: colors.successSoft },
 ] as const;
 
+/** نام پیش‌فرض انتقال، وقتی کاربر «انتقال» را می‌زند و فیلد خالی است. */
+const TRANSFER_MERCHANT = 'انتقال بین حساب‌ها';
+
 /**
  * فیلدهای مشترک تراکنش: مبلغ، پذیرنده، دسته‌بندی.
  * هم صفحه‌ی تایید پیامک و هم صفحه‌ی افزودن دستی از همین استفاده می‌کنند؛
@@ -68,6 +71,50 @@ export function TransactionFormFields({
             );
           })}
         </View>
+
+        {/*
+          ردیف دوم، همان شکلِ ردیف خرج/درآمد.
+          خرج و درآمد پاک نمی‌شوند چون جهت پول حتی در انتقال هم معنی دارد: یک سرِ
+          انتقال از حساب بیرون می‌رود و سر دیگر وارد حساب دیگری می‌شود، و موجودی
+          هر کارت روی همین حساب می‌شود.
+        */}
+        <View style={styles.typeSwitch}>
+          <TouchableOpacity
+            onPress={() => form.setInternalTransfer(false)}
+            style={[
+              styles.typeChip,
+              !form.internalTransfer
+                ? { backgroundColor: colors.surface, borderColor: colors.border }
+                : null,
+            ]}>
+            <Text style={[styles.countText, !form.internalTransfer ? styles.countTextOn : null]}>
+              در محاسبه بیاید
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              form.setInternalTransfer(true);
+              // بدون نام، دکمه‌ی ثبت خاموش می‌ماند؛ برای انتقال اسمش از قبل معلوم است.
+              if (form.merchant.trim().length === 0) form.setMerchant(TRANSFER_MERCHANT);
+            }}
+            style={[
+              styles.typeChip,
+              form.internalTransfer
+                ? { backgroundColor: colors.primarySoft, borderColor: colors.primary }
+                : null,
+            ]}>
+            <Text style={[styles.countText, form.internalTransfer ? styles.transferTextOn : null]}>
+              انتقال بین حساب‌ها
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {form.internalTransfer ? (
+          <Text style={styles.transferHint}>
+            در فهرست تراکنش‌ها می‌ماند، ولی روی مجموع خرج و درآمد و تفکیک دسته اثری ندارد.
+          </Text>
+        ) : null}
 
         <Text style={styles.fieldLabel}>مبلغ (تومان)</Text>
         <TextInput
@@ -198,6 +245,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   typeText: { fontSize: 14, fontWeight: '800', color: colors.textMuted },
+  countText: { fontSize: 13, fontWeight: '700', color: colors.textFaint },
+  countTextOn: { color: colors.text },
+  transferTextOn: { color: colors.primaryDark },
+  transferHint: { fontSize: 12, color: colors.textMuted, lineHeight: 21 },
   amountIncome: { color: colors.success },
   gap: { gap: spacing.sm },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted },

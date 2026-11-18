@@ -121,10 +121,10 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         balance: parsed.balance ?? undefined,
         type: form.type,
         rawSms,
-        internalTransfer: transferDecision === true ? true : undefined,
+        internalTransfer: form.internalTransfer || undefined,
       });
       // سرِ دیگر هم باید نشان بخورد، وگرنه نصف انتقال هنوز خرج شمرده می‌شود.
-      if (transferDecision === true && counterpart && !counterpart.internalTransfer) {
+      if (form.internalTransfer && counterpart && !counterpart.internalTransfer) {
         updateTransaction(counterpart.id, { internalTransfer: true });
       }
       // goBack نه navigate('Dashboard'): اگر پیامک دیگری هم در صف است، صفحه‌ی
@@ -196,6 +196,9 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
             decision={transferDecision}
             onDecide={value => {
               setTransferDecision(value);
+              // کارت فقط یک میان‌بر است؛ مقدار واقعی همان چیزی است که در فرم نشسته
+              // و کاربر می‌تواند با همان دکمه‌های بالای صفحه عوضش کند.
+              form.setInternalTransfer(value);
               // پیامک واریز فروشگاه ندارد و بدون آن دکمه‌ی ثبت خاموش می‌ماند؛ برای
               // انتقال، اسم خودش معلوم است.
               if (value && form.merchant.trim().length === 0) form.setMerchant('انتقال بین حساب‌ها');

@@ -64,6 +64,7 @@ export function AddTransactionScreen({ navigation, route }: Props) {
         bank: form.bank ?? undefined,
         date: form.date.toISOString(),
         type: form.type,
+        internalTransfer: form.internalTransfer || undefined,
       });
       navigation.navigate('Dashboard');
     } catch {

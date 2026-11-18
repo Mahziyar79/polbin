@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { FormFooter } from '../components/FormFooter';
 import { FormScreenHeader } from '../components/FormScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -9,7 +9,7 @@ import { TransactionFormFields } from '../components/TransactionFormFields';
 import { useTransactionForm } from '../hooks/useTransactionForm';
 import { RootStackParamList } from '../navigation/types';
 import { useTransactions } from '../state/TransactionsContext';
-import { colors, radius, spacing } from '../theme';
+import { colors, spacing } from '../theme';
 import { formatJalaliDate, formatTime, formatToman } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditTransaction'>;
@@ -34,13 +34,11 @@ export function EditTransactionScreen({ navigation, route }: Props) {
           type: transaction.type,
           bank: transaction.bank ?? null,
           date: transaction.date,
+          internalTransfer: transaction.internalTransfer ?? false,
         }
       : undefined,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
-  // اینجا هم می‌شود نشانش را زد یا برداشت — برای وقتی پیشنهاد لحظه‌ی تایید را
-  // رد کرده یا اصلاً پیشنهادی نبوده (پیامک دوم دیر رسیده).
-  const [internalTransfer, setInternalTransfer] = useState(transaction?.internalTransfer ?? false);
 
   // تراکنش ممکن است هم‌زمان از جای دیگری حذف شده باشد.
   if (!transaction) {
@@ -68,7 +66,7 @@ export function EditTransactionScreen({ navigation, route }: Props) {
         bank: form.bank ?? undefined,
         date: form.date.toISOString(),
         type: form.type,
-        internalTransfer: internalTransfer || undefined,
+        internalTransfer: form.internalTransfer || undefined,
       });
       navigation.goBack();
     } catch {
@@ -112,22 +110,6 @@ export function EditTransactionScreen({ navigation, route }: Props) {
           onManageCategories={() => navigation.navigate('Categories')}
         />
 
-        <View style={styles.transferRow}>
-          <View style={styles.transferText}>
-            <Text style={styles.transferTitle}>انتقال بین حساب‌های خودم</Text>
-            <Text style={styles.transferBody}>
-              در فهرست می‌ماند ولی در خرج و درآمد حساب نمی‌شود — برای کارت‌به‌کارت بین کارت‌های خودت.
-            </Text>
-          </View>
-          <Switch
-            value={internalTransfer}
-            onValueChange={setInternalTransfer}
-            trackColor={{ false: colors.border, true: colors.primarySoft }}
-            thumbColor={internalTransfer ? colors.primary : colors.surface}
-            accessibilityLabel="انتقال بین حساب‌های خودم"
-          />
-        </View>
-
         <TouchableOpacity onPress={handleDelete} style={styles.deleteLink}>
           <Text style={styles.deleteText}>حذف این تراکنش</Text>
         </TouchableOpacity>
@@ -146,19 +128,6 @@ export function EditTransactionScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
-  transferRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  transferText: { flex: 1, gap: 2 },
-  transferTitle: { fontSize: 13, fontWeight: '800', color: colors.text },
-  transferBody: { fontSize: 11, color: colors.textMuted, lineHeight: 18 },
   deleteLink: { alignItems: 'center', paddingVertical: spacing.md },
   deleteText: { fontSize: 13, fontWeight: '700', color: colors.expense },
 });

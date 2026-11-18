@@ -18,6 +18,8 @@ export interface TransactionFormValues {
   bank: string | null;
   /** ISO — زمان خودِ تراکنش، نه زمان ثبت. */
   date: string;
+  /** انتقال بین حساب‌های خودِ کاربر — در جمع خرج و درآمد نمی‌آید. */
+  internalTransfer: boolean;
 }
 
 export interface TransactionForm {
@@ -42,6 +44,12 @@ export interface TransactionForm {
    */
   date: Date;
   setDate: (date: Date) => void;
+  /**
+   * این تراکنش جابه‌جایی بین حساب‌های خودِ کاربر است، نه خرج و نه درآمد.
+   * در فهرست می‌ماند ولی از همه‌ی جمع‌ها کنار گذاشته می‌شود.
+   */
+  internalTransfer: boolean;
+  setInternalTransfer: (value: boolean) => void;
   /** پر کردن فرم از بیرون — مثلاً بعد از رسیدن نتیجه‌ی پارس پیامک. */
   setValues: (values: Partial<TransactionFormValues>) => void;
 }
@@ -61,6 +69,7 @@ export function useTransactionForm(initial?: Partial<TransactionFormValues>): Tr
   const [date, setDate] = useState<Date>(() =>
     initial?.date ? new Date(initial.date) : new Date(),
   );
+  const [internalTransfer, setInternalTransfer] = useState(initial?.internalTransfer ?? false);
 
   /**
    * با عوض شدن نوع، دسته هم باید عوض شود؛ وگرنه یک تراکنش درآمدی با دسته‌ی
@@ -84,6 +93,7 @@ export function useTransactionForm(initial?: Partial<TransactionFormValues>): Tr
     if (values.type !== undefined) setTypeRaw(values.type);
     if (values.bank !== undefined) setBank(values.bank);
     if (values.date !== undefined) setDate(new Date(values.date));
+    if (values.internalTransfer !== undefined) setInternalTransfer(values.internalTransfer);
   }, []);
 
   const amount = Number(toEnDigits(amountText).replace(/[^\d]/g, '')) || 0;
@@ -101,6 +111,8 @@ export function useTransactionForm(initial?: Partial<TransactionFormValues>): Tr
     setBank,
     date,
     setDate,
+    internalTransfer,
+    setInternalTransfer,
     amount,
     canSave: amount > 0 && merchant.trim().length > 0,
     setValues,
