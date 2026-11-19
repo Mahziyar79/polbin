@@ -12,6 +12,7 @@ import {
 } from '../utils/jalali';
 import { Card } from './Card';
 import { Text } from './Text';
+import { AnimatedProgressBar } from './AnimatedProgressBar';
 
 interface Props {
   /** خرج ماه جاری به تومان. */
@@ -122,14 +123,11 @@ function BudgetProgressCard({
           </Text>
         </View>
 
-        <View style={styles.track}>
-          <View
-            style={[
-              styles.fill,
-              { backgroundColor: tone.bar, width: `${Math.min(ratio, 1) * 100}%` },
-            ]}
-          />
-        </View>
+        <AnimatedProgressBar
+          progress={ratio}
+          color={tone.bar}
+          accessibilityLabel={`بودجه‌ی ${monthLabel}، ${toFaDigits(Math.round(ratio * 100))} درصد مصرف شده`}
+        />
 
         <Text style={styles.amounts}>
           {`${formatToman(spent, false)} از ${formatToman(monthly)}`}
@@ -192,13 +190,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { flex: 1, fontSize: 14, fontWeight: '800', color: colors.text },
   percent: { fontSize: 14, fontWeight: '800' },
-  track: {
-    height: 10,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt,
-    overflow: 'hidden',
-  },
-  fill: { height: '100%', borderRadius: radius.pill },
   amounts: { fontSize: 13, color: colors.textMuted },
   hint: { fontSize: 12, color: colors.textFaint, lineHeight: 22 },
   over: { fontSize: 12, color: colors.expense, fontWeight: '700', lineHeight: 22 },

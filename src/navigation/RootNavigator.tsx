@@ -24,6 +24,9 @@ import { subscribeToSharedText, takePendingSharedText } from '../services/shareI
 import { readJSON, STORAGE_KEYS } from '../services/storage';
 import { colors } from '../theme';
 import { RootStackParamList } from './types';
+import { PendingTransactionsScreen } from '../screens/PendingTransactionsScreen';
+import { subscribeToOpenPendingSms, takePendingSmsToOpen } from '../services/pendingSms';
+import { usePendingSms } from '../state/PendingSmsContext';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -41,10 +44,12 @@ const navTheme = {
   },
 };
 
-export function RootNavigator({ initialSharedText }: { initialSharedText?: string | null }) {
+export function RootNavigator({ initialSharedText, initialPendingSmsId }: { initialSharedText?: string | null; initialPendingSmsId?: string }) {
   // متن هم‌رسانی‌شده تا آماده شدن ناوبری اینجا منتظر می‌ماند. اگر اپ بسته بوده،
   // ناوبری چند فریم بعد از رسیدن متن آماده می‌شود.
   const [pendingSms, setPendingSms] = useState<string | null>(initialSharedText ?? null);
+  const [pendingId, setPendingId] = useState<string | null>(initialPendingSmsId ?? null);
+  const { refresh: refreshPending } = usePendingSms();
   const [navigatorReady, setNavigatorReady] = useState(false);
 
   // فقط یک‌بار خوانده می‌شود و دیگر عوض نمی‌شود.
@@ -63,7 +68,7 @@ export function RootNavigator({ initialSharedText }: { initialSharedText?: strin
   // ولی فقط وقتی واقعاً پیامکی در صف است، تا ناوبری عادی رندر اضافه نگیرد.
   const [routeTick, setRouteTick] = useState(0);
   const pendingRef = useRef<string | null>(pendingSms);
-  pendingRef.current = pendingSms;
+  pendingRef.current = pendingSms ?? pendingId;
 
   /**
    * یک متن ممکن است از دو راه برسد: رویداد، و متنِ نگه‌داشته‌شده در نیتیو (وقتی
@@ -100,6 +105,45 @@ export function RootNavigator({ initialSharedText }: { initialSharedText?: strin
   }, [accept]);
 
   useEffect(() => {
+    let mounted = true;
+    const unsubscribe = subscribeToOpenPendingSms(id => {
+      setPendingId(id);
+      takePendingSmsToOpen().catch(() => {});
+    });
+    takePendingSmsToOpen().then(id => {
+      if (mounted && id) setPendingId(id);
+    }).catch(() => {});
+    return () => { mounted = false; unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    if (!pendingId || !navigatorReady || !navigationRef.isReady()) return;
+    if (navigationRef.getCurrentRoute()?.name === 'Onboarding') return;
+    let active = true;
+    refreshPending().then(items => {
+      if (!active) return;
+      const item = items.find(entry => entry.id === pendingId);
+      const current = navigationRef.getCurrentRoute();
+      if (item) {
+        const params = current?.params as RootStackParamList['ConfirmTransaction'] | undefined;
+        if (current?.name !== 'ConfirmTransaction' || params?.pendingSmsId !== item.id) {
+          navigationRef.dispatch(StackActions.push('ConfirmTransaction', {
+            rawSms: item.rawSms, pendingSmsId: item.id, receivedAt: item.receivedAt,
+          }));
+        }
+      } else {
+        navigationRef.navigate('PendingTransactions');
+      }
+      setPendingId(id => id === pendingId ? null : id);
+    }).catch(() => {
+      if (!active) return;
+      navigationRef.navigate('PendingTransactions');
+      setPendingId(null);
+    });
+    return () => { active = false; };
+  }, [pendingId, navigatorReady, routeTick, refreshPending]);
+
+  useEffect(() => {
     if (!pendingSms || !navigatorReady || !navigationRef.isReady()) return;
 
     // کاربر تازه هنوز وسط معرفی است؛ نباید از رویش بپریم.
@@ -131,6 +175,7 @@ export function RootNavigator({ initialSharedText }: { initialSharedText?: strin
       <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="PendingTransactions" component={PendingTransactionsScreen} options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen
           name="ConfirmTransaction"
           component={ConfirmTransactionScreen}

@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -28,17 +28,20 @@ import { colors, spacing } from '../theme';
 import { ParsedSms, Transaction } from '../types';
 import { toFaDigits } from '../utils/format';
 import { Text } from '../components/Text';
+import { usePendingSms } from '../state/PendingSmsContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ConfirmTransaction'>;
 
 export function ConfirmTransactionScreen({ route, navigation }: Props) {
-  const { rawSms } = route.params;
+  const { rawSms, pendingSmsId, receivedAt } = route.params;
+  const { dismiss: dismissPending, refresh: refreshPending } = usePendingSms();
   const { transactions, addTransaction, updateTransaction } = useTransactions();
   const form = useTransactionForm();
   const { setValues } = form;
 
   const [parsed, setParsed] = useState<ParsedSms | null>(null);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
 
@@ -58,7 +61,7 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     let mounted = true;
-    parseSmsRemote(rawSms).then(result => {
+    parseSmsRemote(rawSms, receivedAt !== undefined ? new Date(receivedAt) : undefined).then(result => {
       if (!mounted) return;
       setParsed(result);
       setDuplicate(
@@ -103,13 +106,23 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
     };
     // فهرست تراکنش‌ها عمداً وابستگی نیست — فقط وضعیت لحظه‌ی رسیدن پیامک مهم است.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawSms, setValues]);
+  }, [rawSms, receivedAt, setValues]);
 
   async function handleConfirm() {
-    if (!parsed || !form.canSave) return;
+    if (!parsed || !form.canSave || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setSaveError(null);
+    let committed = false;
     try {
+      if (pendingSmsId) {
+        const waiting = await refreshPending();
+        const alreadySaved = transactions.some(tx => tx.sourceSmsId === pendingSmsId);
+        if (!waiting.some(item => item.id === pendingSmsId) && !alreadySaved) {
+          setSaveError('این مورد قبلاً ثبت یا رد شده است. به فهرست انتظار برگرد.');
+          return;
+        }
+      }
       await addTransaction({
         amount: form.amount,
         merchant: form.merchant.trim(),
@@ -121,18 +134,39 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         balance: parsed.balance ?? undefined,
         type: form.type,
         rawSms,
+        sourceSmsId: pendingSmsId,
         internalTransfer: form.internalTransfer || undefined,
       });
+      committed = true;
       // سرِ دیگر هم باید نشان بخورد، وگرنه نصف انتقال هنوز خرج شمرده می‌شود.
       if (form.internalTransfer && counterpart && !counterpart.internalTransfer) {
         updateTransaction(counterpart.id, { internalTransfer: true });
       }
+      if (pendingSmsId) await dismissPending(pendingSmsId);
       // goBack نه navigate('Dashboard'): اگر پیامک دیگری هم در صف است، صفحه‌ی
       // تاییدش زیر همین است و باید دیده شود، نه اینکه تا داشبورد پرش کنیم.
       navigation.goBack();
     } catch {
-      setSaveError('ثبت تراکنش ناموفق بود. دوباره تلاش کن.');
+      setSaveError(committed
+        ? 'تراکنش ثبت شد؛ پاک‌کردن آن از فهرست انتظار ناموفق بود. دوباره تلاش کن.'
+        : 'ثبت تراکنش ناموفق بود. دوباره تلاش کن.');
     } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
+
+  async function skipDuplicate() {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      if (pendingSmsId) await dismissPending(pendingSmsId);
+      navigation.goBack();
+    } catch {
+      setSaveError('کنار گذاشتن این مورد ناموفق بود. دوباره تلاش کن.');
+    } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -184,7 +218,7 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         {duplicate ? (
           <DuplicateCard
             match={duplicate}
-            onSkip={() => navigation.goBack()}
+            onSkip={skipDuplicate}
             onDismiss={() => setDuplicate(null)}
           />
         ) : null}

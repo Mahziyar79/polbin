@@ -31,6 +31,11 @@ const TYPES = [
 /** نام پیش‌فرض انتقال، وقتی کاربر «انتقال» را می‌زند و فیلد خالی است. */
 const TRANSFER_MERCHANT = 'انتقال بین حساب‌ها';
 
+const COUNTING_MODES = [
+  { transfer: false, label: 'در محاسبه بیاید' },
+  { transfer: true, label: 'انتقال بین حساب‌ها' },
+] as const;
+
 /**
  * فیلدهای مشترک تراکنش: مبلغ، پذیرنده، دسته‌بندی.
  * هم صفحه‌ی تایید پیامک و هم صفحه‌ی افزودن دستی از همین استفاده می‌کنند؛
@@ -73,41 +78,40 @@ export function TransactionFormFields({
         </View>
 
         {/*
-          ردیف دوم، همان شکلِ ردیف خرج/درآمد.
+          نحوه‌ی محاسبه مستقل از جهت خرج/درآمد است.
           خرج و درآمد پاک نمی‌شوند چون جهت پول حتی در انتقال هم معنی دارد: یک سرِ
           انتقال از حساب بیرون می‌رود و سر دیگر وارد حساب دیگری می‌شود، و موجودی
           هر کارت روی همین حساب می‌شود.
         */}
-        <View style={styles.typeSwitch}>
-          <TouchableOpacity
-            onPress={() => form.setInternalTransfer(false)}
-            style={[
-              styles.typeChip,
-              !form.internalTransfer
-                ? { backgroundColor: colors.surface, borderColor: colors.border }
-                : null,
-            ]}>
-            <Text style={[styles.countText, !form.internalTransfer ? styles.countTextOn : null]}>
-              در محاسبه بیاید
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              form.setInternalTransfer(true);
-              // بدون نام، دکمه‌ی ثبت خاموش می‌ماند؛ برای انتقال اسمش از قبل معلوم است.
-              if (form.merchant.trim().length === 0) form.setMerchant(TRANSFER_MERCHANT);
-            }}
-            style={[
-              styles.typeChip,
-              form.internalTransfer
-                ? { backgroundColor: colors.primarySoft, borderColor: colors.primary }
-                : null,
-            ]}>
-            <Text style={[styles.countText, form.internalTransfer ? styles.transferTextOn : null]}>
-              انتقال بین حساب‌ها
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.countingGroup}>
+          <Text style={styles.countingLabel}>نحوه‌ی محاسبه</Text>
+          <View style={styles.countingSwitch} accessibilityRole="radiogroup" accessibilityLabel="نحوه‌ی محاسبه">
+            {COUNTING_MODES.map(option => {
+              const active = form.internalTransfer === option.transfer;
+              return (
+                <TouchableOpacity
+                  key={option.label}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: active }}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    form.setInternalTransfer(option.transfer);
+                    // بدون نام، دکمه‌ی ثبت خاموش می‌ماند؛ برای انتقال اسمش از قبل معلوم است.
+                    if (option.transfer && form.merchant.trim().length === 0) {
+                      form.setMerchant(TRANSFER_MERCHANT);
+                    }
+                  }}
+                  style={[styles.countingOption, active ? styles.countingOptionActive : null]}>
+                  <View style={[styles.radio, active ? styles.radioActive : null]}>
+                    {active ? <View style={styles.radioDot} /> : null}
+                  </View>
+                  <Text style={[styles.countText, active ? styles.countTextOn : null]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {form.internalTransfer ? (
@@ -245,10 +249,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   typeText: { fontSize: 14, fontWeight: '800', color: colors.textMuted },
-  countText: { fontSize: 13, fontWeight: '700', color: colors.textFaint },
-  countTextOn: { color: colors.text },
-  transferTextOn: { color: colors.primaryDark },
-  transferHint: { fontSize: 12, color: colors.textMuted, lineHeight: 21 },
+  countingGroup: { gap: spacing.xs, marginBottom: spacing.xs },
+  countingLabel: { fontSize: 11, color: colors.textMuted },
+  countingSwitch: { flexDirection: 'row', gap: spacing.xs, padding: spacing.xs, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt },
+  countingOption: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 48, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: radius.md, borderWidth: 1, borderColor: 'transparent' },
+  countingOptionActive: { backgroundColor: colors.surface, borderColor: colors.primary, shadowColor: colors.primaryDark, shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  radio: { width: 16, height: 16, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.textFaint, alignItems: 'center', justifyContent: 'center' },
+  radioActive: { borderColor: colors.primary },
+  radioDot: { width: 6, height: 6, borderRadius: radius.pill, backgroundColor: colors.primary },
+  countText: { flex: 1, fontSize: 12, lineHeight: 20, fontWeight: '700', color: colors.textMuted },
+  countTextOn: { color: colors.primaryDark },
+  transferHint: { fontSize: 12, color: colors.primaryDark, lineHeight: 21, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.primarySoft },
   amountIncome: { color: colors.success },
   gap: { gap: spacing.sm },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted },

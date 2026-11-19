@@ -6,6 +6,7 @@ const SHARED_TEXT_EVENT = 'polbin.sharedText';
 /** propی که در اجرای سرد از getLaunchOptions می‌آید. */
 export interface AppLaunchProps {
   sharedText?: string;
+  pendingSmsId?: string;
 }
 
 /**

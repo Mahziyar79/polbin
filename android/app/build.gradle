@@ -85,8 +85,8 @@ android {
         applicationId "com.polbin"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.0.2"
+        versionCode 6
+        versionName "1.0.4"
     }
     // lintVitalRelease برای هر بیلد release ابزار lint را جداگانه از مخزن گوگل
     // دانلود می‌کند؛ روی این اتصال ناپایدار است و بیلد را می‌شکند. لینت اندروید

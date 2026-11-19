@@ -20,7 +20,8 @@
     "react-native-mmkv": "^4.3.2",
     "react-native-nitro-modules": "^0.37.1",
     "react-native-safe-area-context": "^5.5.2",
-    "react-native-screens": "^4.27.0"
+    "react-native-screens": "^4.27.0",
+    "react-native-svg": "^15.16.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

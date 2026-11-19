@@ -38,6 +38,8 @@ class MainActivity : ReactActivity() {
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       object : DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled) {
         override fun getLaunchOptions(): Bundle? {
+          val pendingId = extractPendingId(intent)
+          if (pendingId != null) return Bundle().apply { putString("pendingSmsId", pendingId) }
           val sharedText = extractSharedText(intent) ?: return null
           return Bundle().apply { putString(SHARED_TEXT_PROP, sharedText) }
         }
@@ -47,6 +49,14 @@ class MainActivity : ReactActivity() {
     // تا getIntent() بعداً هم همین intent تازه را برگرداند.
     setIntent(intent)
     super.onNewIntent(intent)
+
+    val pendingId = extractPendingId(intent)
+    if (pendingId != null) {
+      pendingSmsToOpen = pendingId
+      (application as? ReactApplication)?.reactHost?.currentReactContext
+          ?.emitDeviceEvent(PendingSmsStore.OPEN_EVENT, pendingId)
+      return
+    }
 
     val sharedText = extractSharedText(intent) ?: return
     val reactContext = (application as? ReactApplication)?.reactHost?.currentReactContext
@@ -76,9 +86,19 @@ class MainActivity : ReactActivity() {
     return text?.takeIf { it.isNotBlank() }
   }
 
+  private fun extractPendingId(intent: Intent?): String? {
+    if (intent?.action != ACTION_CONFIRM_TRANSACTION) return null
+    intent.getStringExtra(PendingSmsStore.EXTRA_PENDING_ID)?.takeIf { it.isNotBlank() }?.let { return it }
+    val body = intent.getStringExtra(EXTRA_SMS_TEXT) ?: return null
+    if (!SmsFilter.looksLikeBankSms(body)) return null
+    return try { PendingSmsStore.enqueueLegacy(this, body, System.currentTimeMillis())?.id ?: "resolved" }
+    catch (_: Exception) { null }
+  }
+
   companion object {
     /** متنی که قبل از آماده شدن JS رسیده؛ یک بار برداشته می‌شود. */
     @Volatile @JvmStatic var pendingSharedText: String? = null
+    @Volatile @JvmStatic var pendingSmsToOpen: String? = null
 
     /** لمس نوتیفیکیشن «تراکنش تازه». */
     const val ACTION_CONFIRM_TRANSACTION = "com.polbin.action.CONFIRM_TRANSACTION"

@@ -58,7 +58,7 @@ export function TransactionRow({ tx, highlighted, onPress }: Props) {
   if (!onPress) return content;
 
   return (
-    <TouchableOpacity onPress={() => onPress(tx.id)} activeOpacity={0.6}>
+    <TouchableOpacity accessibilityRole="button" onPress={() => onPress(tx.id)} activeOpacity={0.6}>
       {content}
     </TouchableOpacity>
   );
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: 14,
   },
   highlighted: {
     backgroundColor: colors.primarySoft,
@@ -77,18 +77,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   avatar: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emoji: { fontSize: 20 },
   middle: { flex: 1, gap: 2 },
-  merchant: { fontSize: 15, fontWeight: '700', color: colors.text },
-  meta: { fontSize: 12, color: colors.textFaint },
-  trailing: { alignItems: 'center', gap: spacing.xs },
-  amount: { fontSize: 14, fontWeight: '800' },
+  merchant: { fontSize: 15, fontWeight: '800', color: colors.text },
+  meta: { fontSize: 11, color: colors.textMuted, lineHeight: 19 },
+  trailing: { minWidth: 94, alignItems: 'flex-end', gap: spacing.xs },
+  amount: { fontSize: 15, fontWeight: '800' },
   debit: { color: colors.text },
   credit: { color: colors.success },
   transfer: { color: colors.textFaint },

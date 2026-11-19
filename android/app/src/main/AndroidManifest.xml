@@ -3,7 +3,7 @@
     <!-- INTERNET عمداً اینجا نیست؛ فقط در src/debug برای Metro. اپ سرور ندارد. -->
 
     <!-- خواندن خودکار پیامک بانکی. پیامک از گوشی خارج نمی‌شود؛ متن فقط از
-         TransactionSmsReceiver به صفحه‌ی تایید می‌رود و هیچ‌جا ذخیره نمی‌شود. -->
+         TransactionSmsReceiver در صف خصوصی اپ می‌ماند تا کاربر آن را ثبت یا رد کند. -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

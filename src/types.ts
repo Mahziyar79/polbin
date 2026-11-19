@@ -45,6 +45,8 @@ export interface Transaction {
   balance?: number;
   type: TransactionType;
   rawSms?: string;
+  /** Idempotency key for a transaction confirmed from the persistent SMS queue. */
+  sourceSmsId?: string;
   /**
    * انتقال بین حساب‌های خودِ کاربر (کارت‌به‌کارت از کارت A به کارت B).
    * در فهرست می‌ماند ولی در هیچ جمعِ خرج و درآمدی نمی‌آید.

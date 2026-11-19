@@ -14,8 +14,8 @@ import { parseSms } from './smsParser';
  * تأخیر ساختگی ندارد: قبلاً ۶۰۰ میلی‌ثانیه «در حال خواندن پیامک…» نشان می‌داد
  * برای کاری که روی خود گوشی یک میلی‌ثانیه طول می‌کشد.
  */
-export async function parseSmsRemote(raw: string): Promise<ParsedSms> {
-  return parseSms(raw);
+export async function parseSmsRemote(raw: string, receivedAt?: Date): Promise<ParsedSms> {
+  return parseSms(raw, receivedAt);
 }
 
 /** POST /transactions */

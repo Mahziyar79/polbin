@@ -1,7 +1,8 @@
 export type RootStackParamList = {
   Onboarding: undefined;
   Dashboard: undefined;
-  ConfirmTransaction: { rawSms: string };
+  ConfirmTransaction: { rawSms: string; pendingSmsId?: string; receivedAt?: number };
+  PendingTransactions: undefined;
   /** پیش‌پرشده از کارت «پولی بی‌خبر رفته»؛ بدون پارامتر یعنی فرم خالی. */
   AddTransaction:
     | {

@@ -28,6 +28,16 @@ function manual(over: Partial<Transaction>): Transaction {
 }
 
 describe('findBalanceGaps', () => {
+  beforeEach(() => {
+    // Fixtures must stay inside the 60-day window regardless of when Jest runs.
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-20T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('وقتی مانده‌ها با مبلغ‌ها می‌خوانند، اختلافی نیست', () => {
     const list = [
       sms({ date: '2026-09-10T08:00:00.000Z', amount: 100_000, balance: 900_000 }),

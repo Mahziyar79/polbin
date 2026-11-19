@@ -43,12 +43,15 @@ export function PickerSheet({ visible, title, options, selectedId, onSelect, onC
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="بستن" />
 
         <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]}>
+          <View style={styles.handle} />
           <Text style={styles.title}>{title}</Text>
 
           <ScrollView>
             {options.map(option => (
               <Pressable
                 key={option.id}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: option.id === selectedId }}
                 onPress={() => onSelect(option.id)}
                 style={({ pressed }) => [
                   styles.option,
@@ -60,6 +63,9 @@ export function PickerSheet({ visible, title, options, selectedId, onSelect, onC
                   {option.label}
                 </Text>
                 {option.trailing ? <Text style={styles.trailing}>{option.trailing}</Text> : null}
+                <View style={[styles.check, option.id === selectedId ? styles.checkActive : null]} pointerEvents="none" accessible={false}>
+                  {option.id === selectedId ? <Text style={styles.checkText}>✓</Text> : null}
+                </View>
               </Pressable>
             ))}
           </ScrollView>
@@ -87,17 +93,21 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.sm,
   },
-  title: { fontSize: 15, fontWeight: '800', color: colors.text, marginBottom: spacing.xs },
+  handle: { width: 32, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md },
+  title: { fontSize: 17, fontWeight: '800', color: colors.text, marginBottom: spacing.xs },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: 14,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.md,
   },
   optionPressed: { backgroundColor: colors.surfaceAlt },
   optionActive: { backgroundColor: colors.primarySoft },
+  check: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  checkActive: { backgroundColor: colors.primary },
+  checkText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 20 },
   label: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.text },
-  trailing: { fontSize: 12, color: colors.textFaint },
+  trailing: { fontSize: 12, color: colors.textMuted },
 });

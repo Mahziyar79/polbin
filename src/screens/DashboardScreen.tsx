@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card } from '../components/Card';
 import { CategoryBars } from '../components/CategoryBars';
 import { Fab } from '../components/Fab';
-import { ProportionBar } from '../components/ProportionBar';
+import { CategoryDonut } from '../components/CategoryDonut';
 import { AppMenu } from '../components/AppMenu';
 import { BalancesCard } from '../components/BalancesCard';
 import { GapCard } from '../components/GapCard';
@@ -36,6 +36,8 @@ import { colors, radius, spacing } from '../theme';
 import { Transaction, TransactionType } from '../types';
 import { formatJalaliDate, formatToman, toFaDigits } from '../utils/format';
 import { Text } from '../components/Text';
+import { NotificationBell } from '../components/NotificationBell';
+import { usePendingSms } from '../state/PendingSmsContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
@@ -76,6 +78,7 @@ const MODES = [
 export function DashboardScreen({ navigation }: Props) {
   const { profile } = useProfile();
   const { transactions, lastAddedId } = useTransactions();
+  const { items: pendingItems } = usePendingSms();
   const { categories } = useCategories();
   const [mode, setMode] = useState<TransactionType>('debit');
   const [periodId, setPeriodId] = useState<PeriodId>(PERIODS[0].id);
@@ -120,8 +123,8 @@ export function DashboardScreen({ navigation }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.topBar}>
-          <View>
-            <Text style={styles.greeting}>
+          <View style={styles.greetingBox}>
+            <Text style={styles.greeting} numberOfLines={1}>
               {profile.displayName ? `سلام ${profile.displayName} 👋` : 'سلام 👋'}
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Calendar')}>
@@ -130,13 +133,15 @@ export function DashboardScreen({ navigation }: Props) {
               </Text>
             </TouchableOpacity>
           </View>
-          {/* «پشتیبان» به منو منتقل شد؛ این جای خالی حالا در منو را باز می‌کند. */}
+          <View style={styles.topActions}>
+          <NotificationBell count={pendingItems.length} onPress={() => navigation.navigate('PendingTransactions')} />
           <TouchableOpacity
             onPress={() => setMenuOpen(true)}
             style={styles.topAction}
             accessibilityLabel="منو">
             <Text style={styles.menuIcon}>☰</Text>
           </TouchableOpacity>
+          </View>
         </View>
 
         <SmsAutoCard />
@@ -222,17 +227,12 @@ export function DashboardScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <View style={styles.proportionWrap}>
-            <ProportionBar data={breakdown} />
-          </View>
-
-          <View style={styles.legend}>
-            {breakdown.slice(0, 4).map(item => (
-              <View key={item.category.id} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: item.category.color }]} />
-                <Text style={styles.legendText}>{item.category.label}</Text>
-              </View>
-            ))}
+          <View style={styles.chartWrap}>
+            <CategoryDonut
+              data={breakdown}
+              label={isExpense ? 'مجموع خرج' : 'مجموع درآمد'}
+              onPress={categoryId => navigation.navigate('Transactions', { categoryId, type: mode })}
+            />
           </View>
         </Card>
 
@@ -334,7 +334,9 @@ export function DashboardScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: 96 },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  greetingBox: { flex: 1 },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   greeting: { fontSize: 20, fontWeight: '800', color: colors.text },
   monthLabel: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   // اندازه‌ی ثابت، وگرنه با یک آیکون باریک، borderRadius گرد آن را بیضی می‌کرد.
@@ -417,12 +419,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   balanceAccentNegative: { backgroundColor: colors.expense },
-  proportionWrap: { marginTop: spacing.lg },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.md },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  legendDot: { width: 9, height: 9, borderRadius: radius.pill },
-  // flexShrink لازم است: متن داخل ردیف بدون آن، در راست‌به‌چپ دُمش را می‌اندازد.
-  legendText: { flexShrink: 1, fontSize: 11, color: colors.textMuted },
+  chartWrap: { marginTop: spacing.lg },
   section: { gap: spacing.md },
   sectionEmpty: {
     fontSize: 13,

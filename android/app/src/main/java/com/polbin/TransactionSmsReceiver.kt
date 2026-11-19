@@ -7,6 +7,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Bundle
+import android.net.Uri
 import android.provider.Telephony
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -26,7 +28,7 @@ import com.facebook.react.common.LifecycleState
  *    action اختصاصی باز می‌شود و MainActivity متن را به همان مسیرِ «هم‌رسانی»
  *    در جاوااسکریپت می‌رساند.
  *
- * متن پیامک هیچ‌جا ذخیره نمی‌شود؛ فقط از اینجا به صفحه‌ی تایید می‌رود.
+ * پیامک بانکی قبل از اعلان در حافظه‌ی خصوصی اپ ثبت می‌شود تا گم نشود.
  */
 class TransactionSmsReceiver : BroadcastReceiver() {
 
@@ -36,15 +38,27 @@ class TransactionSmsReceiver : BroadcastReceiver() {
     val body = readBody(intent) ?: return
     if (!SmsFilter.looksLikeBankSms(body)) return
 
+    val receivedAt = Telephony.Sms.Intents.getMessagesFromIntent(intent)
+        ?.firstOrNull()?.timestampMillis ?: System.currentTimeMillis()
+    val item = try {
+      PendingSmsStore.enqueue(context, body, receivedAt) ?: return
+    } catch (_: Exception) {
+      // Keep a legacy-style notification as a recovery path if disk storage fails.
+      notify(context, body, null)
+      return
+    }
+
     val reactContext =
         (context.applicationContext as? ReactApplication)?.reactHost?.currentReactContext
 
     if (reactContext != null && reactContext.lifecycleState == LifecycleState.RESUMED) {
-      reactContext.emitDeviceEvent(SHARED_TEXT_EVENT, body)
+      reactContext.emitDeviceEvent(PendingSmsStore.CHANGED_EVENT, null)
+      reactContext.emitDeviceEvent(PendingSmsStore.OPEN_EVENT, item.id)
       return
     }
 
-    notify(context, body)
+    reactContext?.emitDeviceEvent(PendingSmsStore.CHANGED_EVENT, null)
+    notify(context, body, item.id)
   }
 
   /**
@@ -56,7 +70,7 @@ class TransactionSmsReceiver : BroadcastReceiver() {
           ?.joinToString("") { it.displayMessageBody ?: "" }
           ?.takeIf { it.isNotBlank() }
 
-  private fun notify(context: Context, body: String) {
+  private fun notify(context: Context, body: String, pendingId: String?) {
     val manager = NotificationManagerCompat.from(context)
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -78,6 +92,9 @@ class TransactionSmsReceiver : BroadcastReceiver() {
         Intent(context, MainActivity::class.java).apply {
           action = MainActivity.ACTION_CONFIRM_TRANSACTION
           putExtra(MainActivity.EXTRA_SMS_TEXT, body)
+          if (pendingId != null) putExtra(PendingSmsStore.EXTRA_PENDING_ID, pendingId)
+          // Extras do not participate in PendingIntent identity; equal SMS bodies may be distinct.
+          if (pendingId != null) data = Uri.parse("polbin://pending/$pendingId")
           addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 
@@ -97,18 +114,20 @@ class TransactionSmsReceiver : BroadcastReceiver() {
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .addExtras(Bundle().apply { if (pendingId != null) putString(PendingSmsStore.EXTRA_PENDING_ID, pendingId) })
             .setContentIntent(pending)
             .build()
 
     try {
-      manager.notify(body.hashCode(), notification)
+      if (pendingId != null) manager.notify(pendingId, PendingSmsStore.NOTIFICATION_ID, notification)
+      else manager.notify(body.hashCode(), notification)
     } catch (_: SecurityException) {
       // کاربر مجوز نوتیفیکیشن نداده — پیامک بی‌صدا رد می‌شود، نه اینکه کرش کنیم.
     }
   }
 
   private companion object {
-    const val SHARED_TEXT_EVENT = "polbin.sharedText"
     const val CHANNEL_ID = "polbin.transactions"
   }
 }

@@ -3,7 +3,6 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { AppButton } from '../components/AppButton';
 import { BankMark } from '../components/BankMark';
-import { Card } from '../components/Card';
 import { FormScreenHeader } from '../components/FormScreenHeader';
 import { JalaliDatePicker } from '../components/JalaliDatePicker';
 import { PickerSheet } from '../components/PickerSheet';
@@ -208,7 +207,7 @@ export function TransactionsScreen({ navigation, route }: Props) {
             <FormScreenHeader
               onBack={() => navigation.goBack()}
               title="تراکنش‌ها"
-              subtitle="همه‌ی خرج‌ها و درآمدها، تازه‌ترین اول. برای ویرایش یا حذف روی هرکدام بزن."
+              subtitle="همه‌ی خرج‌ها و درآمدها، تازه‌ترین اول."
             />
 
             <View style={styles.filters}>
@@ -231,7 +230,6 @@ export function TransactionsScreen({ navigation, route }: Props) {
               onPress={() => setOpenPicker('date')}
               style={[styles.dropdown, datePreset !== ALL ? styles.dropdownActive : null]}
               accessibilityRole="button">
-              <Text style={styles.allEmoji}>📅</Text>
               <Text style={styles.dropdownLabel} numberOfLines={1}>
                 {dateLabel}
               </Text>
@@ -293,12 +291,13 @@ export function TransactionsScreen({ navigation, route }: Props) {
           </View>
         }
         renderItem={({ item, index }) => (
-          <Card style={[styles.rowCard, index === 0 ? null : styles.rowCardStacked]}>
+          <View style={[styles.rowCard, index === 0 ? styles.rowCardFirst : null, index === page.length - 1 ? styles.rowCardLast : null]}>
+            {index > 0 ? <View style={styles.rowDivider} /> : null}
             <TransactionRow
               tx={item}
               onPress={id => navigation.navigate('EditTransaction', { id })}
             />
-          </Card>
+          </View>
         )}
         ListEmptyComponent={
           <Text style={styles.empty}>
@@ -400,12 +399,12 @@ export function TransactionsScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xl },
   header: { gap: spacing.md, marginBottom: spacing.md },
-  filters: { flexDirection: 'row', gap: spacing.sm },
+  filters: { flexDirection: 'row', gap: spacing.xs, backgroundColor: colors.surfaceAlt, borderRadius: radius.lg, padding: spacing.xs },
   chip: {
     flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    backgroundColor: 'transparent',
     alignItems: 'center',
   },
   chipActive: { backgroundColor: colors.primary },
@@ -419,7 +418,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 10,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -433,10 +432,12 @@ const styles = StyleSheet.create({
   summary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   summaryCount: { flex: 1, fontSize: 13, color: colors.textMuted },
   summaryTotal: { fontSize: 14, fontWeight: '800' },
-  positive: { color: colors.success },
+  positive: { color: colors.primaryDark },
   negative: { color: colors.expense },
-  rowCard: { paddingVertical: spacing.xs },
-  rowCardStacked: { marginTop: spacing.sm },
+  rowCard: { backgroundColor: colors.surface, borderLeftWidth: 1, borderRightWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.lg },
+  rowCardFirst: { borderTopWidth: 1, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
+  rowCardLast: { borderBottomWidth: 1, borderBottomLeftRadius: radius.lg, borderBottomRightRadius: radius.lg },
+  rowDivider: { height: 1, backgroundColor: colors.border },
   empty: { fontSize: 14, color: colors.textFaint, textAlign: 'center', paddingVertical: spacing.xxl },
   more: { gap: spacing.sm, marginTop: spacing.lg },
   moreHint: { fontSize: 12, color: colors.textFaint, textAlign: 'center' },

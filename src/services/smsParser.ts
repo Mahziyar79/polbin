@@ -290,7 +290,7 @@ function extractDate(text: string, now = new Date()): string | null {
   return null;
 }
 
-export function parseSms(raw: string): ParsedSms {
+export function parseSms(raw: string, receivedAt = new Date()): ParsedSms {
   const text = normalize(raw);
 
   const amounts = extractAmounts(text);
@@ -313,7 +313,7 @@ export function parseSms(raw: string): ParsedSms {
   const categoryKind = BUILT_IN_CATEGORIES.find(c => c.id === category)?.kind;
   const categoryId = categoryKind === type ? category : fallbackIdFor(type);
 
-  const date = extractDate(text) ?? new Date().toISOString();
+  const date = extractDate(text, receivedAt) ?? receivedAt.toISOString();
 
   let confidence = 0;
   if (amount) confidence += 0.5;

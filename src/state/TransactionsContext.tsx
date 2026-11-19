@@ -1,6 +1,6 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { createTransaction } from '../services/fakeApi';
-import { readJSON, STORAGE_KEYS, writeJSON } from '../services/storage';
+import { readJSON, storage, STORAGE_KEYS, writeJSON } from '../services/storage';
 import { CategoryId, Transaction } from '../types';
 
 interface TransactionsContextValue {
@@ -30,20 +30,27 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
     readJSON<Transaction[]>(STORAGE_KEYS.transactions, []),
   );
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+  const current = useRef(transactions);
 
-  const replaceAll = useCallback((next: Transaction[]) => {
+  const commit = useCallback((next: Transaction[]) => {
     writeJSON(STORAGE_KEYS.transactions, next);
+    current.current = next;
     setTransactions(next);
   }, []);
+  const replaceAll = commit;
 
   const addTransaction = useCallback(
     async (input: Omit<Transaction, 'id'>) => {
       const created = await createTransaction(input);
-      setTransactions(prev => {
-        const next = [created, ...prev];
-        writeJSON(STORAGE_KEYS.transactions, next);
-        return next;
-      });
+      const existing = input.sourceSmsId
+        ? current.current.find(tx => tx.sourceSmsId === input.sourceSmsId)
+        : undefined;
+      if (existing) return existing;
+      const next = [created, ...current.current];
+      // A pending SMS may only be removed after this durable write succeeds.
+      storage.set(STORAGE_KEYS.transactions, JSON.stringify(next));
+      current.current = next;
+      setTransactions(next);
       setLastAddedId(created.id);
       return created;
     },
@@ -52,32 +59,20 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
 
   const updateTransaction = useCallback(
     (id: string, patch: Partial<Omit<Transaction, 'id'>>) => {
-      setTransactions(prev => {
-        const next = prev.map(tx => (tx.id === id ? { ...tx, ...patch } : tx));
-        writeJSON(STORAGE_KEYS.transactions, next);
-        return next;
-      });
+      commit(current.current.map(tx => (tx.id === id ? { ...tx, ...patch } : tx)));
     },
-    [],
+    [commit],
   );
 
   const removeTransaction = useCallback((id: string) => {
-    setTransactions(prev => {
-      const next = prev.filter(tx => tx.id !== id);
-      writeJSON(STORAGE_KEYS.transactions, next);
-      return next;
-    });
+    commit(current.current.filter(tx => tx.id !== id));
     // اگر همین تراکنش هایلایت بود، هایلایتِ یک ردیفِ حذف‌شده باقی نماند.
     setLastAddedId(prev => (prev === id ? null : prev));
-  }, []);
+  }, [commit]);
 
   const reassignCategory = useCallback((fromId: CategoryId, toId: CategoryId) => {
-    setTransactions(prev => {
-      const next = prev.map(tx => (tx.categoryId === fromId ? { ...tx, categoryId: toId } : tx));
-      writeJSON(STORAGE_KEYS.transactions, next);
-      return next;
-    });
-  }, []);
+    commit(current.current.map(tx => (tx.categoryId === fromId ? { ...tx, categoryId: toId } : tx)));
+  }, [commit]);
 
   const value = useMemo<TransactionsContextValue>(
     () => ({

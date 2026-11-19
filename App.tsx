@@ -15,6 +15,7 @@ import { LockScreen } from './src/components/LockScreen';
 import { ProfileProvider } from './src/state/ProfileContext';
 import { CategoriesProvider } from './src/state/CategoriesContext';
 import { TransactionsProvider } from './src/state/TransactionsContext';
+import { PendingSmsProvider } from './src/state/PendingSmsContext';
 
 function App(props: AppLaunchProps) {
   // وقتی اپ بسته بوده و کاربر پیامکی را هم‌رسانی می‌کند، متن از سمت نیتیو
@@ -27,6 +28,7 @@ function App(props: AppLaunchProps) {
       <ProfileProvider>
         <CategoriesProvider>
           <TransactionsProvider>
+            <PendingSmsProvider>
             <BudgetProvider>
               <InstallmentsProvider>
                 <LockProvider>
@@ -36,12 +38,13 @@ function App(props: AppLaunchProps) {
                     جایش باشد.
                   */}
                   <View style={styles.root}>
-                    <RootNavigator initialSharedText={initialSharedText} />
+                    <RootNavigator initialSharedText={initialSharedText} initialPendingSmsId={props.pendingSmsId} />
                     <LockScreen />
                   </View>
                 </LockProvider>
               </InstallmentsProvider>
             </BudgetProvider>
+            </PendingSmsProvider>
           </TransactionsProvider>
         </CategoriesProvider>
       </ProfileProvider>

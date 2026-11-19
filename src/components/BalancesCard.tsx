@@ -82,30 +82,29 @@ export function BalancesCard({ accounts }: Props) {
               <View style={styles.cardTop}>
                 <View style={styles.logoPill}>
                   {bank ? (
-                    <BankMark bank={bank} size={30} />
+                    <BankMark bank={bank} size={26} />
                   ) : (
                     <Text style={styles.logoFallback}>🏦</Text>
                   )}
                 </View>
-                <Text style={styles.bankName} numberOfLines={1}>
-                  {bank?.name ?? account.bank ?? 'بانک نامشخص'}
-                </Text>
+                <View style={styles.bankDetails}>
+                  <Text style={styles.bankName} numberOfLines={1}>
+                    {bank?.name ?? account.bank ?? 'بانک نامشخص'}
+                  </Text>
+                  <Text style={styles.number}>{numberLine(account)}</Text>
+                </View>
               </View>
-
-              <Text style={styles.number}>{numberLine(account)}</Text>
 
               <View style={styles.cardBottom}>
-                <View style={styles.balanceBox}>
-                  <Text style={styles.balanceLabel}>موجودی</Text>
-                  <Text style={styles.balance} numberOfLines={1}>
-                    {formatToman(account.balance)}
-                  </Text>
-                </View>
-                <Text style={[styles.asOf, stale ? styles.asOfStale : null]}>
-                  {stale ? 'قدیمی — ' : ''}
-                  {`از پیامک ${formatRelativeDay(account.asOf)} ${formatTime(account.asOf)}`}
+                <Text style={styles.balanceLabel}>موجودی</Text>
+                <Text style={styles.balance} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                  {formatToman(account.balance)}
                 </Text>
               </View>
+              <Text style={[styles.asOf, stale ? styles.asOfStale : null]} numberOfLines={1}>
+                {stale ? 'قدیمی — ' : ''}
+                {`از پیامک ${formatRelativeDay(account.asOf)} ${formatTime(account.asOf)}`}
+              </Text>
             </View>
           );
         })}
@@ -127,9 +126,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '800', color: colors.text },
   rail: { gap: spacing.sm },
   card: {
-    height: 172,
+    height: 140,
     borderRadius: radius.xl,
-    padding: spacing.lg,
+    padding: 14,
     justifyContent: 'space-between',
     overflow: 'hidden',
   },
@@ -153,21 +152,21 @@ const styles = StyleSheet.create({
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   logoPill: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoFallback: { fontSize: 20 },
-  bankName: { flex: 1, fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
-  number: { fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 1 },
-  cardBottom: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.sm },
-  balanceBox: { flexShrink: 1, gap: 2 },
+  bankDetails: { flex: 1, gap: 2 },
+  bankName: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  number: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 1 },
+  cardBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   balanceLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)' },
-  balance: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
-  asOf: { flexShrink: 1, fontSize: 10, color: 'rgba(255,255,255,0.75)', textAlign: 'left' },
+  balance: { flexShrink: 1, fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
+  asOf: { fontSize: 10, color: 'rgba(255,255,255,0.75)' },
   asOfStale: { color: '#FFE3A3', fontWeight: '700' },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { width: 6, height: 6, borderRadius: radius.pill, backgroundColor: colors.border },
