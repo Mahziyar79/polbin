@@ -4,6 +4,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PendingSmsQueueTest {
+  @Test fun bulkRemovalPreservesNewEntriesAndBlocksRedelivery() {
+    val queue = PendingSmsQueue()
+    val first = queue.add("first", 1000)!!
+    val second = queue.add("second", 2000)!!
+    val incoming = queue.add("incoming", 3000)!!
+    queue.removeMany(listOf(first.id, second.id))
+    org.junit.Assert.assertEquals(listOf(incoming), queue.entries)
+    org.junit.Assert.assertNull(queue.add("first", 1000))
+    org.junit.Assert.assertNull(queue.add("second", 2000))
+  }
   private val body = "بانک ملت برداشت 250000 ریال حساب 1234"
 
   @Test fun `redelivery of the same SMS does not add another item`() {

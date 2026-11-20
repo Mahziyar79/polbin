@@ -30,7 +30,7 @@
 | تقویم | `src/screens/CalendarScreen.tsx` | تقویم شمسی با تراکنش‌های هر روز |
 | تراکنش‌ها | `src/screens/TransactionsScreen.tsx` | فهرست کامل با فیلتر خرج/درآمد، دسته و بانک + صفحه‌بندی |
 | قسط‌ها | `src/screens/InstallmentsScreen.tsx` | وام‌ها و خریدهای قسطی، جدول سررسیدها، علامت زدن پرداخت |
-| افزودن قسط | `src/screens/AddInstallmentScreen.tsx` | عنوان، مبلغ هر قسط، تعداد، اولین سررسید، بانک |
+| افزودن قسط | `src/screens/AddInstallmentScreen.tsx` | فرم کوتاه خرید قسطی، وام و چک پرداختی؛ اطلاعات اختیاری زیر تنظیمات بیشتر؛ چک تک‌سررسید با شماره و گیرنده؛ یادآوری محلی |
 | درباره‌ی برنامه | `src/screens/AboutScreen.tsx` | قابلیت‌ها و حریم خصوصی |
 | پشتیبان و خروجی | `src/screens/BackupScreen.tsx` | خروجی JSON، بازگردانی از فایل، خروجی اکسل، گزارش PDF |
 | قفل اپ | `src/screens/LockSettingsScreen.tsx` | رمز چهاررقمی و اثر انگشت؛ خودِ قفل یک لایه روی ناوبری است (`LockScreen`) |

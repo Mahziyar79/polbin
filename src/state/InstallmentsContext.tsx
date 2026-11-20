@@ -1,10 +1,13 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { AppState } from 'react-native';
+import { syncInstallmentReminders } from '../services/installmentReminders';
 import { readJSON, STORAGE_KEYS, writeJSON } from '../services/storage';
 import { Installment } from '../types';
 
 interface InstallmentsContextValue {
   installments: Installment[];
-  add: (input: Omit<Installment, 'id' | 'paid'>) => Installment;
+  reminderError: string | null;
+  add: (input: Omit<Installment, 'id' | 'paid'> & { paid?: number[] }) => Installment;
   update: (id: string, patch: Partial<Omit<Installment, 'id'>>) => void;
   remove: (id: string) => void;
   /** علامت زدن یا برداشتن علامتِ یک قسط. */
@@ -19,6 +22,20 @@ export function InstallmentsProvider({ children }: { children: React.ReactNode }
   const [installments, setInstallments] = useState<Installment[]>(() =>
     readJSON<Installment[]>(STORAGE_KEYS.installments, []),
   );
+  const [reminderError, setReminderError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    const sync = () => {
+      syncInstallmentReminders(installments).then(() => {
+        if (active) setReminderError(null);
+      }).catch(() => {
+        if (active) setReminderError('تنظیم یادآوری‌ها ناموفق بود؛ برنامه را دوباره باز کن.');
+      });
+    };
+    sync();
+    const subscription = AppState.addEventListener('change', state => { if (state === 'active') sync(); });
+    return () => { active = false; subscription.remove(); };
+  }, [installments]);
 
   /** یک جا می‌نویسد تا حافظه و حالت هیچ‌وقت از هم جدا نیفتند. */
   const commit = useCallback((next: Installment[]) => {
@@ -28,8 +45,11 @@ export function InstallmentsProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const add = useCallback(
-    (input: Omit<Installment, 'id' | 'paid'>) => {
-      const created: Installment = { ...input, id: `ins_${Date.now()}`, paid: [] };
+    (input: Omit<Installment, 'id' | 'paid'> & { paid?: number[] }) => {
+      const paid = [...new Set(input.paid ?? [])]
+        .filter(number => Number.isInteger(number) && number >= 1 && number <= input.count)
+        .sort((a, b) => a - b);
+      const created: Installment = { ...input, id: `ins_${Date.now()}_${Math.floor(Math.random() * 1e6)}`, paid };
       setInstallments(current => {
         const next = [created, ...current];
         writeJSON(STORAGE_KEYS.installments, next);
@@ -74,8 +94,8 @@ export function InstallmentsProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const value = useMemo<InstallmentsContextValue>(
-    () => ({ installments, add, update, remove, togglePaid, replaceAll: commit }),
-    [installments, add, update, remove, togglePaid, commit],
+    () => ({ installments, reminderError, add, update, remove, togglePaid, replaceAll: commit }),
+    [installments, reminderError, add, update, remove, togglePaid, commit],
   );
 
   return <InstallmentsContext.Provider value={value}>{children}</InstallmentsContext.Provider>;

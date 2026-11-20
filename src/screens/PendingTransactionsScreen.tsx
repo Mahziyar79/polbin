@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { AppButton } from '../components/AppButton';
@@ -14,15 +14,16 @@ import { PendingSms } from '../services/pendingSms';
 import { parseSms } from '../services/smsParser';
 import { usePendingSms } from '../state/PendingSmsContext';
 import { colors, radius, spacing } from '../theme';
-import { formatRelativeDay, formatTime, formatToman } from '../utils/format';
+import { formatRelativeDay, formatTime, formatToman, toFaDigits } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingTransactions'>;
 
 export function PendingTransactionsScreen({ navigation }: Props) {
-  const { items, loaded, error, refresh, dismiss } = usePendingSms();
+  const { items, loaded, error, refresh, dismiss, dismissAll } = usePendingSms();
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const deleting = useRef(false);
   const rows = useMemo(() => items.map(item => ({
     item, parsed: parseSms(item.rawSms, new Date(item.receivedAt)),
   })), [items]);
@@ -37,9 +38,25 @@ export function PendingTransactionsScreen({ navigation }: Props) {
     Alert.alert('رد کردن تراکنش', 'این پیامک از فهرست انتظار کنار گذاشته می‌شود. تراکنش‌های ثبت‌شده تغییری نمی‌کنند.', [
       { text: 'بازگشت', style: 'cancel' },
       { text: 'رد کردن', style: 'destructive', onPress: () => {
+        if (deleting.current) return;
+        deleting.current = true;
         setBusy(item.id);
         dismiss(item.id).catch(() => Alert.alert('انجام نشد', 'رد کردن این مورد ناموفق بود. دوباره تلاش کن.'))
-          .finally(() => setBusy(null));
+          .finally(() => { deleting.current = false; setBusy(null); });
+      } },
+    ]);
+  }
+
+  function discardAll() {
+    Alert.alert('حذف همه اعلان‌ها؟', `${toFaDigits(items.length)} مورد در انتظار حذف می‌شود. تراکنش‌های ثبت‌شده تغییری نمی‌کنند.`, [
+      { text: 'انصراف', style: 'cancel' },
+      { text: 'حذف همه', style: 'destructive', onPress: () => {
+        if (deleting.current) return;
+        deleting.current = true;
+        setBusy('all');
+        dismissAll().then(() => setExpanded(new Set()))
+          .catch(() => Alert.alert('انجام نشد', 'حذف اعلان‌ها یا تازه‌سازی فهرست ناموفق بود. دوباره تلاش کن.'))
+          .finally(() => { deleting.current = false; setBusy(null); });
       } },
     ]);
   }
@@ -54,6 +71,13 @@ export function PendingTransactionsScreen({ navigation }: Props) {
         onRefresh={reload}
         ListHeaderComponent={<View style={styles.header}>
           <FormScreenHeader title="تراکنش‌های در انتظار" subtitle="پیامک‌ها را بررسی و ثبت کن یا موارد ناخواسته را کنار بگذار." onBack={() => navigation.goBack()} />
+          {items.length > 0 ? <TouchableOpacity
+            accessibilityRole="button" accessibilityLabel="حذف همه اعلان‌ها"
+            disabled={busy !== null || refreshing} onPress={discardAll}
+            style={[styles.clearAll, (busy !== null || refreshing) && styles.disabled]}>
+            {busy === 'all' ? <ActivityIndicator size="small" color={colors.expense} /> : <Svg width={18} height={18} viewBox="0 0 24 24"><Path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" fill="none" stroke={colors.expense} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" /></Svg>}
+            <Text style={styles.discard}>{busy === 'all' ? 'در حال حذف…' : 'حذف همه'}</Text>
+          </TouchableOpacity> : null}
           {error ? <Card style={styles.error}>
             <Text style={styles.errorText}>{error}</Text>
             <AppButton title="تلاش دوباره" variant="secondary" onPress={reload} loading={refreshing} />
@@ -70,7 +94,7 @@ export function PendingTransactionsScreen({ navigation }: Props) {
           const isBusy = busy === item.id;
           return <Card style={styles.card}>
             <TouchableOpacity
-              disabled={isBusy}
+              disabled={busy !== null}
               accessibilityRole="button"
               accessibilityLabel={`بررسی و ثبت ${parsed.merchant ?? 'تراکنش بانکی'}، ${parsed.amount !== null ? formatToman(parsed.amount) : 'مبلغ نامشخص'}`}
               activeOpacity={0.7}
@@ -87,14 +111,14 @@ export function PendingTransactionsScreen({ navigation }: Props) {
               </View>
             </TouchableOpacity>
             <View style={styles.actions}>
-              <TouchableOpacity accessibilityRole="button" onPress={() => setExpanded(previous => {
+              <TouchableOpacity disabled={busy !== null} accessibilityRole="button" onPress={() => setExpanded(previous => {
                 const next = new Set(previous);
                 if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
                 return next;
               })} style={styles.action}>
                 <Text style={styles.rawLink}>{expanded.has(item.id) ? 'بستن متن پیامک' : 'متن پیامک'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity disabled={isBusy} accessibilityRole="button" onPress={() => discard(item)} style={styles.action}>
+              <TouchableOpacity disabled={busy !== null} accessibilityRole="button" onPress={() => discard(item)} style={styles.action}>
                 {isBusy ? <ActivityIndicator size="small" color={colors.expense} /> : <Text style={styles.discard}>رد کردن</Text>}
               </TouchableOpacity>
             </View>
@@ -109,6 +133,8 @@ export function PendingTransactionsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xl, gap: spacing.md },
   header: { gap: spacing.md },
+  clearAll: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: spacing.sm, minHeight: 44, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.dangerSoft },
+  disabled: { opacity: 0.5 },
   card: { gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.xs },
   bankIcon: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },

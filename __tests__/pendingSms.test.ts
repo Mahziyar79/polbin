@@ -1,8 +1,21 @@
 import { NativeModules } from 'react-native';
-import { fetchPendingSms, removePendingSms } from '../src/services/pendingSms';
+import { fetchPendingSms, removePendingSms, removePendingSmsBatch } from '../src/services/pendingSms';
 import { parseSms } from '../src/services/smsParser';
 
 afterEach(() => { delete NativeModules.PolbinPendingSms; });
+
+test('batch deletion passes unique IDs to one native write', async () => {
+  const remove = jest.fn().mockResolvedValue(true);
+  NativeModules.PolbinPendingSms = { removePendingSmsBatch: remove };
+  await removePendingSmsBatch(['first', 'second', 'first']);
+  expect(remove).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(remove.mock.calls[0][0])).toEqual(['first', 'second']);
+});
+
+test('batch deletion never reports success when the native operation fails', async () => {
+  NativeModules.PolbinPendingSms = { removePendingSmsBatch: jest.fn().mockResolvedValue(false) };
+  await expect(removePendingSmsBatch(['first'])).rejects.toThrow();
+});
 
 test('native queue is returned with its original receipt time', async () => {
   const item = { id: 'first', rawSms: 'بانک ملت برداشت 250000 ریال', receivedAt: 1_700_000_000_000 };

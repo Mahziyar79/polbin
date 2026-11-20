@@ -5,6 +5,62 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SmsFilterTest {
+  @Test
+  fun `ماتریس ارقام فاصله و پیامک‌های غیرتراکنشی`() {
+    val cases = listOf(
+      "بانک ملت\nبرداشت:99 تومان\nکارت:****1234\nمانده:1000 تومان" to true,
+      "بانک ملت\nخرید:250,000 ریال\nمانده:4,000,000 ریال" to true,
+      "بانک ملت\nبرداشت:1,000,000 ریال\nمانده:4,000,000 ریال\nرمز دوم خود را در اختیار دیگران نگذارید." to true,
+      "بانک ملت\nاسترداد وجه خرید\nمبلغ:250,000 ریال\nمانده:4,000,000 ریال" to true,
+      "بانک ملت\nواریز:1,000,000 ریال\nحساب:3000000009012\nمانده:4,000,000 ریال\nبابت هدیه" to true,
+      "بانک ملت\nخرید ناموفق\nمبلغ:1,750,000 ریال\nکارت:****1234\nموجودی:4,000,000" to false,
+      "بانک ملت خرید مبلغ 1,750,000 ریال کارت ****1234 رمز پویا:12345" to false,
+      "بانک پاسارگاد\nواریز به:356.0000.12345678.1\nموجودی:4,000,000" to false,
+      "بانک ملت\nموجودی:4,000,000 ریال" to false,
+      "خرید 500,000 تومان با حساب کاربری و تخفیف ویژه" to false,
+      "برای دریافت 500,000 ریال به حساب شما به https://example.com مراجعه کنید" to false,
+    )
+    for ((raw, expected) in cases) {
+      val variants = listOf(raw,
+          raw.map { if (it in '0'..'9') "۰۱۲۳۴۵۶۷۸۹"[it - '0'] else it }.joinToString(""),
+          raw.map { if (it in '0'..'9') "٠١٢٣٤٥٦٧٨٩"[it - '0'] else it }.joinToString(""),
+          raw.replace(",", "٬").replace("\n", "\r\n\r\n"),
+          raw.replace(Regex("[0-9][0-9,]*")) { "\u200f${it.value}\u200e" })
+      variants.forEachIndexed { index, text ->
+        org.junit.Assert.assertEquals("variant $index: $raw", expected, SmsFilter.looksLikeBankSms(text))
+      }
+    }
+  }
+  @Test
+  fun `یارانه پاسارگاد با حساب نقطه‌دار و سال کوتاه می‌گذرد`() {
+    assertTrue(SmsFilter.looksLikeBankSms("*بانک پاسارگاد*\nیارانه نقدی مرحله 188\nواریز به: 356.0000.12345678.1\nمبلغ: 3,000,000 ریال\n05/07/30_11:02\nموجودی: 46,583,119 ریال"))
+  }
+  @Test
+  fun `رمز خرید همراه برداشت نهایی می‌گذرد ولی رمز تنها تراکنش نیست`() {
+    val auth = "محرمانه\nخرید\nاسنپ\n1,750,000\nرمز:12345\n1405/07/07-15:31:47\n10.10000000.1"
+    val settlement = "-1,750,000\n07/07_15:32\nمانده: 16,639,664"
+    assertTrue(SmsFilter.looksLikeBankSms("$auth\n$settlement"))
+    assertTrue(SmsFilter.looksLikeBankSms(settlement))
+    assertFalse(SmsFilter.looksLikeBankSms(auth))
+    assertFalse(SmsFilter.looksLikeBankSms("$auth\nحساب:3000000009012\nمانده:16,639,664"))
+  }
+  @Test
+  fun `برداشت خودکار قسط سپه با تاریخ کوتاه می‌گذرد`() {
+    val sms = """
+      بانک سپه
+
+      برداشت:77,419,000
+
+      حساب : 3000000009012
+
+      مانده:17,602,250
+
+      8/29-7:01
+
+      دريافت اتوماتيک  قسط مورخ
+    """.trimIndent()
+    assertTrue(SmsFilter.looksLikeBankSms(sms))
+  }
 
   // ---------- پیامک‌های واقعی که باید بگذرند ----------
 

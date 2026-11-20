@@ -94,7 +94,10 @@ export function LockSettingsScreen({ navigation }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content}>
         <FormScreenHeader
-          onBack={() => navigation.goBack()}
+          onBack={() => {
+            if (step.kind === 'idle') navigation.goBack();
+            else { setStep({ kind: 'idle' }); restart(null); }
+          }}
           title="امنیت"
           subtitle="با رمز، هر کسی که گوشی را بردارد موجودی و خرج‌هایت را نمی‌بیند. رمز فقط روی همین گوشی است."
         />
@@ -103,9 +106,6 @@ export function LockSettingsScreen({ navigation }: Props) {
           <Card style={styles.padCard}>
             <Text style={styles.prompt}>{error ?? prompt}</Text>
             <PinPad onComplete={handlePin} resetKey={resetKey} />
-            <TouchableOpacity onPress={() => { setStep({ kind: 'idle' }); restart(null); }} style={styles.cancel}>
-              <Text style={styles.cancelText}>بازگشت</Text>
-            </TouchableOpacity>
           </Card>
         ) : (
           <>
@@ -173,8 +173,6 @@ const styles = StyleSheet.create({
   card: { gap: spacing.sm },
   padCard: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl },
   prompt: { fontSize: 14, fontWeight: '700', color: colors.text, minHeight: 22 },
-  cancel: { paddingVertical: spacing.sm },
-  cancelText: { fontSize: 13, color: colors.textMuted },
   rowBetween: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   rowText: { flex: 1, gap: 2 },
   rowTitle: { fontSize: 14, fontWeight: '800', color: colors.text },

@@ -8,6 +8,7 @@ import { FormScreenHeader } from '../components/FormScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Text } from '../components/Text';
 import { findBank } from '../data/banks';
+import { installmentKindLabel, INSTALLMENT_KINDS } from '../data/installmentKinds';
 import { RootStackParamList } from '../navigation/types';
 import {
   DueInstallment,
@@ -39,7 +40,7 @@ const STATUS_TONE: Record<DueStatus, { bg: string; fg: string }> = {
 function statusLabel(item: DueInstallment): string {
   switch (item.status) {
     case 'paid':
-      return 'پرداخت شد';
+      return item.plan.kind === 'cheque' ? 'پاس شده' : 'پرداخت شد';
     case 'overdue':
       return `${toFaDigits(-item.daysLeft)} روز تأخیر`;
     case 'today':
@@ -58,10 +59,10 @@ function statusLabel(item: DueInstallment): string {
  * کاربر لازم نیست سی‌وشش ردیف دستی وارد کند. زدن روی هر کارت جدول کاملش را
  * باز می‌کند و از همان‌جا می‌شود هر قسط را پرداخت‌شده علامت زد.
  *
- * فعلاً یادآوری خودکار ندارد — آن مرحله‌ی بعد است و کار نیتیو می‌خواهد.
+ * یادآوری اختیاری روی خود دستگاه زمان‌بندی می‌شود.
  */
 export function InstallmentsScreen({ navigation }: Props) {
-  const { installments, togglePaid } = useInstallments();
+  const { installments, togglePaid, reminderError } = useInstallments();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { active, finished } = useMemo(() => {
@@ -88,10 +89,11 @@ export function InstallmentsScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.content}>
         <FormScreenHeader
           onBack={() => navigation.goBack()}
-          title="قسط‌ها"
-          subtitle="وام‌ها و خریدهای قسطی‌ات. تاریخ سررسید هر قسط خودکار حساب می‌شود."
+          title="اقساط و چک‌ها"
+          subtitle="خرید قسطی، وام و چک‌های پرداختی، یک‌جا."
         />
 
+        {reminderError ? <Text style={styles.reminderError}>{reminderError}</Text> : null}
         {installments.length > 0 ? (
           <Card style={styles.summary}>
             <View style={styles.summaryItem}>
@@ -110,10 +112,9 @@ export function InstallmentsScreen({ navigation }: Props) {
 
         {installments.length === 0 ? (
           <Card style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>هنوز قسطی ثبت نکرده‌ای</Text>
+            <Text style={styles.emptyTitle}>هنوز قسط یا چکی ثبت نکرده‌ای</Text>
             <Text style={styles.emptyBody}>
-              مبلغ هر قسط، تعداد اقساط و تاریخ اولین سررسید را بده؛ بقیه‌ی تاریخ‌ها را
-              خودم با تقویم شمسی حساب می‌کنم.
+              مثلاً موبایل دیجی‌کالا، ماهی ۳ میلیون تومان. مبلغ، تعداد و اولین سررسید را بده؛ بقیه‌ی تاریخ‌ها با تقویم شمسی ساخته می‌شوند.
             </Text>
           </Card>
         ) : null}
@@ -150,7 +151,7 @@ export function InstallmentsScreen({ navigation }: Props) {
 
       <View style={styles.footer}>
         <AppButton
-          title="افزودن قسط"
+          title="افزودن اقساط یا چک"
           onPress={() => navigation.navigate('AddInstallment', {})}
         />
       </View>
@@ -167,7 +168,9 @@ interface PlanCardProps {
 }
 
 function PlanCard({ plan, expanded, onToggleExpand, onEdit, onTogglePaid }: PlanCardProps) {
-  const bank = findBank(plan.bank);
+  const isCheque = plan.kind === 'cheque';
+  const bank = !plan.kind || plan.kind === 'loan' || isCheque ? findBank(plan.bank) : undefined;
+  const kind = INSTALLMENT_KINDS.find(item => item.id === plan.kind);
   const next = nextUnpaid(plan);
   const paidCount = plan.count - remainingCount(plan);
   const ratio = plan.count > 0 ? paidCount / plan.count : 0;
@@ -176,14 +179,18 @@ function PlanCard({ plan, expanded, onToggleExpand, onEdit, onTogglePaid }: Plan
   return (
     <Card style={styles.planCard}>
       <TouchableOpacity onPress={onToggleExpand} activeOpacity={0.8} style={styles.planHead}>
-        {bank ? <BankMark bank={bank} size={34} /> : null}
+        {bank ? <BankMark bank={bank} size={34} /> : <View style={styles.kindMark}><Text style={styles.kindEmoji}>{kind?.emoji ?? '🧾'}</Text></View>}
 
         <View style={styles.planTitleBox}>
           <Text style={styles.planTitle} numberOfLines={1}>
             {plan.title}
           </Text>
+          <Text style={styles.kindText} numberOfLines={1}>
+            {[installmentKindLabel(plan.kind), plan.counterparty].filter(Boolean).join(' · ')}
+          </Text>
+          {plan.reminderEnabled ? <Text style={styles.planMeta}>🔔 یادآوری روشن</Text> : null}
           <Text style={styles.planMeta}>
-            {`${formatToman(plan.amount, false)} تومان در ${toFaDigits(plan.count)} قسط`}
+            {isCheque ? formatToman(plan.amount) : `${formatToman(plan.amount, false)} تومان در ${toFaDigits(plan.count)} قسط`}
           </Text>
         </View>
 
@@ -196,7 +203,7 @@ function PlanCard({ plan, expanded, onToggleExpand, onEdit, onTogglePaid }: Plan
 
       <View style={styles.planStats}>
         <Text style={styles.planStat}>
-          {`${toFaDigits(paidCount)} از ${toFaDigits(plan.count)} پرداخت شده`}
+          {isCheque ? (paidCount ? 'پاس شده' : 'در انتظار پرداخت') : `${toFaDigits(paidCount)} از ${toFaDigits(plan.count)} پرداخت شده`}
         </Text>
         <Text style={styles.planStat}>{`مانده ${formatTomanShort(remainingAmount(plan))}`}</Text>
       </View>
@@ -205,21 +212,23 @@ function PlanCard({ plan, expanded, onToggleExpand, onEdit, onTogglePaid }: Plan
         <View style={styles.nextRow}>
           <View style={styles.nextTextBox}>
             <Text style={styles.nextLabel}>
-              {`قسط ${toFaDigits(next.number)} — ${formatJalaliDate(next.dueDate.toISOString())}`}
+              {`${isCheque ? 'سررسید چک' : `قسط ${toFaDigits(next.number)}`} — ${formatJalaliDate(next.dueDate.toISOString())}`}
             </Text>
             <StatusBadge item={next} />
           </View>
 
           <TouchableOpacity onPress={() => onTogglePaid(next.number)} style={styles.payButton}>
-            <Text style={styles.payText}>پرداخت شد</Text>
+            <Text style={styles.payText}>{isCheque ? 'پاس شد' : 'پرداخت شد'}</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <Text style={styles.done}>همه‌ی قسط‌ها پرداخت شده 🎉</Text>
+        <Text style={styles.done}>{isCheque ? 'چک پاس شده ✓' : 'همه‌ی قسط‌ها پرداخت شده 🎉'}</Text>
       )}
 
       {expanded ? (
         <View style={styles.schedule}>
+          {isCheque && plan.chequeNumber ? <Text style={styles.scheduleHint}>{`شماره چک: ${toFaDigits(plan.chequeNumber)}`}</Text> : null}
+          <Text style={styles.scheduleHint}>علامت پرداخت فقط وضعیت را تغییر می‌دهد؛ خرج جدیدی ثبت نمی‌شود.</Text>
           {schedule.map(item => (
             <TouchableOpacity
               key={item.number}
@@ -230,7 +239,7 @@ function PlanCard({ plan, expanded, onToggleExpand, onEdit, onTogglePaid }: Plan
               </View>
 
               <Text style={[styles.scheduleDate, item.paid ? styles.scheduleDatePaid : null]}>
-                {`${toFaDigits(item.number)}. ${formatJalaliDate(item.dueDate.toISOString())}`}
+                {`${isCheque ? 'سررسید: ' : `${toFaDigits(item.number)}. `}${formatJalaliDate(item.dueDate.toISOString())}`}
               </Text>
 
               <StatusBadge item={item} />
@@ -238,7 +247,7 @@ function PlanCard({ plan, expanded, onToggleExpand, onEdit, onTogglePaid }: Plan
           ))}
 
           <TouchableOpacity onPress={onEdit} style={styles.editLink}>
-            <Text style={styles.editText}>ویرایش این قسط</Text>
+            <Text style={styles.editText}>{isCheque ? 'ویرایش چک' : 'ویرایش اقساط'}</Text>
           </TouchableOpacity>
         </View>
       ) : null}
@@ -258,6 +267,7 @@ function StatusBadge({ item }: { item: DueInstallment }) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
+  reminderError: { fontSize: 12, color: colors.danger },
   summary: { flexDirection: 'row', alignItems: 'center' },
   summaryItem: { flex: 1, gap: 2 },
   summaryDivider: { width: 1, backgroundColor: colors.border, marginHorizontal: spacing.md, alignSelf: 'stretch' },
@@ -273,6 +283,10 @@ const styles = StyleSheet.create({
   planCard: { gap: spacing.sm },
   planHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   planTitleBox: { flex: 1, gap: 2 },
+  kindMark: { width: 42, height: 42, borderRadius: radius.md, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  kindEmoji: { fontSize: 22 },
+  kindText: { fontSize: 12, color: colors.primaryDark },
+  scheduleHint: { fontSize: 12, color: colors.textMuted, lineHeight: 22, paddingVertical: spacing.sm },
   planTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
   planMeta: { fontSize: 12, color: colors.textMuted },
   chevron: { fontSize: 12, color: colors.textMuted },

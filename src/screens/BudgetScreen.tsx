@@ -51,6 +51,7 @@ export function BudgetScreen({ navigation }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <FormScreenHeader
+          onBack={() => navigation.goBack()}
           title="سقف خرج ماهانه"
           subtitle={`چقدر می‌خواهی در ${jalaliMonthName(new Date())} خرج کنی؟ هر وقت خواستی عوضش کن.`}
         />
@@ -109,7 +110,6 @@ export function BudgetScreen({ navigation }: Props) {
         onSubmit={handleSave}
         disabled={amount <= 0}
         error={null}
-        onCancel={() => navigation.goBack()}
       />
     </ScreenContainer>
   );

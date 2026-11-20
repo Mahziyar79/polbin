@@ -85,13 +85,20 @@ object PendingSmsStore {
   }
 
   @Synchronized fun remove(context: Context, id: String) {
+    removeMany(context, listOf(id))
+  }
+
+  @Synchronized fun removeMany(context: Context, ids: Collection<String>) {
+    if (ids.isEmpty()) return
     val queue = read(context)
-    val entry = queue.entries.firstOrNull { it.id == id }
-    queue.remove(id)
+    val selected = ids.toSet()
+    val entries = queue.entries.filter { it.id in selected }
+    queue.removeMany(selected)
+    // One durable commit before cancelling any notification: no partial deletion.
     save(context, queue)
     val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    manager.cancel(id, NOTIFICATION_ID)
+    selected.forEach { manager.cancel(it, NOTIFICATION_ID) }
     // Legacy notifications used the raw body hash as their integer identifier.
-    entry?.let { manager.cancel(it.rawSms.hashCode()) }
+    entries.forEach { manager.cancel(it.rawSms.hashCode()) }
   }
 }

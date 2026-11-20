@@ -89,9 +89,17 @@ export interface CategoryBreakdown {
  * «وام ۳۶ ماهه» یک رکورد است با تکرار ماهانه، نه ۳۶ رکورد جدا: هم فرم ساده‌تر
  * می‌ماند و هم فایل پشتیبان بی‌خود بزرگ نمی‌شود.
  */
+export type InstallmentKind = 'purchase' | 'loan' | 'cheque' | 'other';
+
 export interface Installment {
   id: string;
   title: string;
+  /** Optional for compatibility with plans saved before purchase types existed. */
+  kind?: InstallmentKind;
+  /** فروشگاه یا دریافت‌کننده، مستقل از بانک پرداخت. */
+  counterparty?: string;
+  chequeNumber?: string;
+  reminderEnabled?: boolean;
   /** مبلغ هر قسط به تومان. */
   amount: number;
   /** تعداد کل اقساط. */

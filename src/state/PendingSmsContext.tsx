@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { fetchPendingSms, PendingSms, removePendingSms, subscribeToPendingSms } from '../services/pendingSms';
+import { fetchPendingSms, PendingSms, removePendingSms, removePendingSmsBatch, subscribeToPendingSms } from '../services/pendingSms';
 import { useTransactions } from './TransactionsContext';
 
 interface PendingSmsContextValue {
@@ -9,6 +9,7 @@ interface PendingSmsContextValue {
   error: string | null;
   refresh: () => Promise<PendingSms[]>;
   dismiss: (id: string) => Promise<void>;
+  dismissAll: () => Promise<void>;
 }
 
 const Context = createContext<PendingSmsContextValue | null>(null);
@@ -69,7 +70,13 @@ export function PendingSmsProvider({ children }: { children: React.ReactNode }) 
     await refresh();
   }, [refresh]);
 
-  const value = useMemo(() => ({ items, loaded, error, refresh, dismiss }), [items, loaded, error, refresh, dismiss]);
+  const dismissAll = useCallback(async () => {
+    // Capture the confirmed list so a newly arriving SMS is not silently removed.
+    await removePendingSmsBatch(items.map(item => item.id));
+    await refresh();
+  }, [items, refresh]);
+
+  const value = useMemo(() => ({ items, loaded, error, refresh, dismiss, dismissAll }), [items, loaded, error, refresh, dismiss, dismissAll]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 

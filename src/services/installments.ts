@@ -34,7 +34,7 @@ function statusOf(paid: boolean, daysLeft: number): DueStatus {
 export function expand(plan: Installment, now = new Date()): DueInstallment[] {
   const items: DueInstallment[] = [];
 
-  for (let number = 1; number <= plan.count; number++) {
+  for (let number = 1; number <= (plan.kind === 'cheque' ? 1 : plan.count); number++) {
     const dueDate = dueDateOf(plan, number);
     const paid = plan.paid.includes(number);
     const daysLeft = daysUntil(dueDate, now);

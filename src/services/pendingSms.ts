@@ -10,6 +10,7 @@ export interface PendingSms {
 interface PendingSmsNative {
   getPendingSms(): Promise<string>;
   removePendingSms(id: string): Promise<boolean>;
+  removePendingSmsBatch?(json: string): Promise<boolean>;
   takePendingSmsToOpen(): Promise<string | null>;
 }
 
@@ -32,6 +33,13 @@ export async function fetchPendingSms(): Promise<PendingSms[]> {
 export async function removePendingSms(id: string): Promise<void> {
   if (!native()) throw new Error('برای استفاده از این قابلیت، بیلد جدید اپ را نصب کن.');
   await native()!.removePendingSms(id);
+}
+
+export async function removePendingSmsBatch(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const module = native();
+  if (!module?.removePendingSmsBatch) throw new Error('برای استفاده از این قابلیت، بیلد جدید اپ را نصب کن.');
+  if (!await module.removePendingSmsBatch(JSON.stringify([...new Set(ids)]))) throw new Error('حذف اعلان‌ها ناموفق بود.');
 }
 
 export async function takePendingSmsToOpen(): Promise<string | null> {

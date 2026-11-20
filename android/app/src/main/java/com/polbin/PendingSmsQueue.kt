@@ -29,4 +29,8 @@ class PendingSmsQueue(
     // Only hashes are kept to prevent delayed/redelivered SMS from reappearing.
     while (resolved.size > 1000) resolved.removeAt(0)
   }
+
+  fun removeMany(ids: Collection<String>) {
+    ids.toSet().forEach { remove(it) }
+  }
 }

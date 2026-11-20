@@ -44,13 +44,7 @@ export function EditTransactionScreen({ navigation, route }: Props) {
   if (!transaction) {
     return (
       <ScreenContainer>
-        <FormScreenHeader title="تراکنش پیدا نشد" subtitle="این تراکنش دیگر وجود ندارد." />
-        <FormFooter
-          submitTitle="بستن"
-          onSubmit={() => navigation.goBack()}
-          disabled={false}
-          error={null}
-        />
+        <FormScreenHeader title="تراکنش پیدا نشد" subtitle="این تراکنش دیگر وجود ندارد." onBack={() => navigation.goBack()} />
       </ScreenContainer>
     );
   }
@@ -100,6 +94,7 @@ export function EditTransactionScreen({ navigation, route }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <FormScreenHeader
+          onBack={() => navigation.goBack()}
           title="ویرایش تراکنش"
           subtitle={`ثبت‌شده در ${formatJalaliDate(transaction.date)} · ${formatTime(
             transaction.date,
@@ -120,7 +115,6 @@ export function EditTransactionScreen({ navigation, route }: Props) {
         onSubmit={handleSave}
         disabled={!form.canSave}
         error={saveError}
-        onCancel={() => navigation.goBack()}
       />
     </ScreenContainer>
   );

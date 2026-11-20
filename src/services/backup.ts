@@ -130,6 +130,11 @@ function isValidInstallment(value: unknown): value is Installment {
   return (
     typeof plan.id === 'string' &&
     typeof plan.title === 'string' &&
+    (plan.kind === undefined || ['purchase', 'loan', 'cheque', 'other'].includes(plan.kind)) &&
+    (plan.kind !== 'cheque' || plan.count === 1) &&
+    (plan.chequeNumber === undefined || typeof plan.chequeNumber === 'string') &&
+    (plan.counterparty === undefined || typeof plan.counterparty === 'string') &&
+    (plan.reminderEnabled === undefined || typeof plan.reminderEnabled === 'boolean') &&
     typeof plan.amount === 'number' &&
     Number.isFinite(plan.amount) &&
     plan.amount > 0 &&

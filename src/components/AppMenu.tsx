@@ -11,7 +11,7 @@ const ITEMS: Array<{ route: keyof RootStackParamList; icon: string; label: strin
   [
     { route: 'Transactions', icon: 'M4 7h16M4 17h16m-4-4 4 4-4 4M8 3 4 7l4 4', label: 'تراکنش‌ها', hint: 'همه‌ی خرج‌ها و درآمدها' },
     { route: 'Calendar', icon: 'M5 5h14v15H5zM8 3v4m8-4v4M5 10h14', label: 'تقویم', hint: 'خرج هر روز ماه' },
-    { route: 'Installments', icon: 'M6 3h12v18l-3-2-3 2-3-2-3 2V3zm3 5h6m-6 4h6', label: 'قسط‌ها', hint: 'وام‌ها و سررسیدها' },
+    { route: 'Installments', icon: 'M6 3h12v18l-3-2-3 2-3-2-3 2V3zm3 5h6m-6 4h6', label: 'اقساط و چک‌ها', hint: 'خرید قسطی، وام و چک پرداختی' },
     { route: 'Categories', icon: 'M3 4h8l10 10-7 7L3 10V4zm4 3h.01', label: 'دسته‌بندی‌ها', hint: 'دیدن و ساختن دسته' },
     { route: 'Backup', icon: 'M12 3v12m-4-4 4 4 4-4M4 15v5h16v-5', label: 'پشتیبان‌گیری و خروجی', hint: 'فایل JSON، اکسل و PDF' },
     { route: 'LockSettings', icon: 'M6 10h12v11H6zm3 0V7a3 3 0 0 1 6 0v3m-3 5v2', label: 'امنیت', hint: 'رمز و اثر انگشت' },

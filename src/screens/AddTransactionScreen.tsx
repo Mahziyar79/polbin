@@ -78,6 +78,7 @@ export function AddTransactionScreen({ navigation, route }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <FormScreenHeader
+          onBack={() => navigation.goBack()}
           title={prefill ? 'ثبت تراکنش بی‌پیامک' : 'تراکنش جدید'}
           subtitle={
             prefill
@@ -104,7 +105,6 @@ export function AddTransactionScreen({ navigation, route }: Props) {
         loading={saving}
         disabled={!form.canSave}
         error={saveError}
-        onCancel={() => navigation.goBack()}
       />
     </ScreenContainer>
   );

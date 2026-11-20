@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { colors, spacing } from '../theme';
 import { AppButton } from './AppButton';
@@ -11,12 +11,10 @@ interface Props {
   loading?: boolean;
   disabled?: boolean;
   error?: string | null;
-  cancelTitle?: string;
-  onCancel?: () => void;
 }
 
 /**
- * نوار پایینی مشترک فرم‌ها: پیام خطا، دکمه‌ی اصلی، لینک انصراف.
+ * نوار پایینی مشترک فرم‌ها: پیام خطا و دکمه‌ی اصلی؛ بازگشت در هدر است.
  *
  * با باز شدن کیبورد به‌اندازه‌ی ارتفاعش بالا می‌آید. بدون این، کیبورد رویش
  * می‌افتاد و کاربر به‌جای دکمه روی کیبورد لمس می‌کرد — چون با edge-to-edge،
@@ -28,8 +26,6 @@ export function FormFooter({
   loading,
   disabled,
   error,
-  cancelTitle,
-  onCancel,
 }: Props) {
   const keyboardHeight = useKeyboardHeight();
 
@@ -37,11 +33,6 @@ export function FormFooter({
     <View style={[styles.footer, { marginBottom: keyboardHeight }]}>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <AppButton title={submitTitle} onPress={onSubmit} loading={loading} disabled={disabled} />
-      {onCancel ? (
-        <TouchableOpacity onPress={onCancel} style={styles.cancelLink}>
-          <Text style={styles.cancelText}>{cancelTitle ?? 'بازگشت'}</Text>
-        </TouchableOpacity>
-      ) : null}
     </View>
   );
 }
@@ -55,6 +46,4 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   error: { color: colors.danger, fontSize: 13, textAlign: 'center', marginBottom: spacing.sm },
-  cancelLink: { alignItems: 'center', paddingVertical: spacing.sm },
-  cancelText: { color: colors.textMuted, fontSize: 13 },
 });

@@ -133,7 +133,7 @@ export function CalendarScreen({ navigation }: Props) {
         <FormScreenHeader
           onBack={() => navigation.goBack()}
           title="تقویم خرج"
-          subtitle="خرج و درآمد هر روز، و روزهایی که قسط داری."
+          subtitle="خرج و درآمد هر روز و سررسید اقساط و چک‌ها."
         />
 
         <Card style={styles.calendarCard}>
@@ -211,7 +211,7 @@ export function CalendarScreen({ navigation }: Props) {
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.dot, styles.dotDue]} />
-              <Text style={styles.legendText}>سررسید قسط</Text>
+              <Text style={styles.legendText}>سررسید قسط و چک</Text>
             </View>
           </View>
         </Card>
@@ -237,7 +237,7 @@ export function CalendarScreen({ navigation }: Props) {
           {selectedDue.length > 0 ? (
             <View style={styles.group}>
               <View style={styles.groupHeader}>
-                <Text style={styles.groupTitle}>قسط‌های این روز</Text>
+                <Text style={styles.groupTitle}>سررسیدهای این روز</Text>
                 <Text style={[styles.groupTotal, { color: colors.primaryDark }]}>
                   {formatToman(selectedDue.reduce((sum, item) => sum + item.plan.amount, 0))}
                 </Text>
@@ -253,7 +253,7 @@ export function CalendarScreen({ navigation }: Props) {
                         {item.plan.title}
                       </Text>
                       <Text style={styles.dueMeta}>
-                        {`قسط ${toFaDigits(item.number)} از ${toFaDigits(item.plan.count)}`}
+                        {item.plan.kind === 'cheque' ? 'چک پرداختی' : `قسط ${toFaDigits(item.number)} از ${toFaDigits(item.plan.count)}`}
                       </Text>
                     </View>
                     <View style={styles.dueTrailing}>

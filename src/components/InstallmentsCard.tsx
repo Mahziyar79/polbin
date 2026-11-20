@@ -54,16 +54,16 @@ export function InstallmentsCard({ installments, onPress }: Props) {
       <Card style={styles.card}>
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={1}>
-            {`قسط‌های ${monthLabel}`}
+            {`اقساط و چک‌های ${monthLabel}`}
           </Text>
-          <Text style={styles.count}>{`${toFaDigits(due.length)} قسط`}</Text>
+          <Text style={styles.count}>{`${toFaDigits(due.length)} سررسید`}</Text>
         </View>
 
         {unpaid.length > 0 ? (
           <>
             <Text style={styles.amount}>{formatToman(amount)}</Text>
             <Text style={styles.meta}>
-              {`${toFaDigits(unpaid.length)} قسط پرداخت‌نشده در این ماه`}
+              {`${toFaDigits(unpaid.length)} سررسید پرداخت‌نشده در این ماه`}
             </Text>
             {soonest ? (
               <Text style={[styles.due, soonest.daysLeft <= 0 ? styles.dueLate : null]}>
@@ -74,8 +74,8 @@ export function InstallmentsCard({ installments, onPress }: Props) {
         ) : (
           <Text style={styles.settled}>
             {due.length > 0
-              ? 'قسط‌های این ماه را پرداخت کرده‌ای 🎉'
-              : 'این ماه قسطی سررسید ندارد.'}
+              ? 'تعهدهای این ماه را پرداخت کرده‌ای 🎉'
+              : 'این ماه سررسیدی نداری.'}
           </Text>
         )}
       </Card>
@@ -87,12 +87,12 @@ function InstallmentsEmptyCard({ onPress }: { onPress: () => void }) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
       <Card style={styles.emptyCard}>
-        <Text style={styles.emptyTitle}>قسط‌هایت را وارد کن</Text>
+        <Text style={styles.emptyTitle}>اقساط و چک‌هایت را وارد کن</Text>
         <Text style={styles.emptyBody}>
-          وقتی وام و قسط‌هایت را ثبت کنی، پول‌بین می‌گوید هر ماه چقدر از پولت از قبل
+          وقتی اقساط یا چک پرداختی‌ات را ثبت کنی، پول‌بین می‌گوید هر ماه چقدر از پولت از قبل
           تعهد شده و چه روزی باید پرداخت کنی.
         </Text>
-        <Text style={styles.emptyAction}>افزودن قسط ←</Text>
+        <Text style={styles.emptyAction}>افزودن اقساط یا چک ←</Text>
       </Card>
     </TouchableOpacity>
   );

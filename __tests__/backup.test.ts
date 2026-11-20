@@ -22,6 +22,23 @@ const plan: Installment = {
 };
 
 describe('backup', () => {
+  it('چک با شماره و گیرنده حفظ می‌شود و سایر اقساط قدیمی به چک تبدیل نمی‌شوند', () => {
+    const cheque: Installment = { ...plan, id: 'cheque', kind: 'cheque', count: 1, paid: [], chequeNumber: '001234', counterparty: 'فروشگاه' };
+    const legacy: Installment = { ...plan, kind: 'other' };
+    const result = parseBackup(buildBackup({ transactions: [], customCategories: [], monthlyBudget: null, installments: [cheque, legacy] }));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.contents.installments).toEqual([cheque, legacy]);
+  });
+  it('خرید قسطی با فروشگاه و پرداخت‌های قبلی بدون تراکنش اضافی برمی‌گردد', () => {
+    const purchase: Installment = { ...plan, kind: 'purchase', title: 'موبایل', counterparty: 'دیجی‌کالا', count: 12, paid: [1, 2, 3] };
+    const result = parseBackup(buildBackup({ transactions: [], customCategories: [], monthlyBudget: null, installments: [purchase] }));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.contents.installments).toEqual([purchase]);
+      expect(result.contents.transactions).toEqual([]);
+    }
+  });
+
   it('متن خام پیامک را از خروجی حذف می‌کند', () => {
     const file = JSON.parse(
       buildBackup({ transactions: [tx], customCategories: [], monthlyBudget: null, installments: [] }),

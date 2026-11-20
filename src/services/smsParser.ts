@@ -2,7 +2,7 @@ import { CategoryId, ParsedSms, TransactionType } from '../types';
 import { BANK_MENTIONS, BANK_NAMES } from '../data/banks';
 import { BUILT_IN_CATEGORIES, fallbackIdFor } from '../data/categories';
 import { toEnDigits } from '../utils/format';
-import { toGregorian, toJalali } from '../utils/jalali';
+import { jalaliMonthLength, toGregorian, toJalali } from '../utils/jalali';
 
 /**
  * پارسر محلیِ پیامک بانکی — نسخه‌ی آینه‌ایِ همان regexهایی که قرار است
@@ -48,6 +48,7 @@ const CREDIT_KEYWORDS = [
   'حقوق',
   'پاداش',
   'عودت',
+  'استرداد',
   'برگشت وجه',
   'نشست',
   'به حساب شما',
@@ -56,6 +57,8 @@ const CREDIT_KEYWORDS = [
 
 /** کلیدواژه‌ی فروشگاه → دسته. اولین تطابق برنده است. */
 const MERCHANT_RULES: Array<{ pattern: RegExp; merchant: string; category: CategoryId }> = [
+  { pattern: /یارانه\s*نقدی|واریز\s*یارانه/, merchant: 'یارانه نقدی', category: 'income_other' },
+  { pattern: /(?:دریافت|برداشت|کسر|پرداخت)\s*(?:اتوماتیک|خودکار)\s*قسط/, merchant: 'پرداخت قسط', category: 'other' },
   // واریزها اول می‌آیند: پیامک واریز پذیرنده ندارد و بدون این قاعده‌ها
   // فیلد «منبع درآمد» خالی می‌ماند و دکمه‌ی ثبت غیرفعال می‌شود.
   { pattern: /حقوق|دستمزد|مستمری/, merchant: 'حقوق', category: 'salary' },
@@ -84,13 +87,42 @@ const MERCHANT_RULES: Array<{ pattern: RegExp; merchant: string; category: Categ
 export function normalizeSmsText(raw: string): string {
   return toEnDigits(raw)
     .replace(/[يﻱﻲ]/g, 'ی')
+    .replace(/ى/g, 'ی')
     .replace(/[كﻙﻚ]/g, 'ک')
     .replace(/\u200c/g, ' ')
+    .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/\u00a0/g, ' ')
     .replace(/[٬،]/g, ',')
-    .replace(/[ \t]+/g, ' ');
+    .replace(/[ \t]+/g, ' ')
+    .replace(/(\d{1,2})[ \t]*:[ \t]*(\d{2})/g, '$1:$2');
 }
 
 const normalize = normalizeSmsText;
+
+// A code alone is not proof of a completed payment. Some banks append a
+// separate signed amount/date/balance block to the very same SMS.
+const AUTH_CODE_RE = /(?:^|\s)رمز(?:\s*(?:پویا|یک\s*بار(?:\s*مصرف)?|دوم))?\s*:\s*\d{4,8}(?=\s|$)/;
+const AUTH_WORD_RE = /رمز\s*(?:پویا|یک\s*بار(?:\s*مصرف)?)|کد\s*(?:تایید|فعالسازی)/;
+const FAILED_TRANSACTION_RE = /(?:^|\n)\s*(?:(?:خرید|تراکنش|پرداخت|برداشت|واریز)\s*(?:ناموفق|انجام\s*نشد)|موجودی\s*کافی\s*نیست|عدم\s*موجودی)/;
+const SETTLED_BLOCK_RE = /(?:^|\n)\s*([+\-−])\s*(\d[\d,]{3,})[ \t]*(ریال|تومان)?[ \t]*\r?\n\s*((?:1[34]\d{2}[/.-])?\d{1,2}[/.-]\d{1,2}[_ -]\d{1,2}:\d{2}(?::\d{2})?)[ \t]*\r?\n\s*(?:مانده|موجودی)(?:[ \t]*حساب)?\s*:\s*(\d[\d,]{3,})[ \t]*(ریال|تومان)?/;
+
+function settledTransaction(text: string): { financialText: string; dateText: string } | null {
+  const block = SETTLED_BLOCK_RE.exec(text);
+  if (!block) return null;
+  let dateText = block[4];
+  // A full date in the same SMS can supply the missing year, while the final
+  // block supplies the payment time. This also handles importing an old SMS.
+  const fullDate = /(1[34]\d{2})[/.-](\d{1,2})[/.-](\d{1,2})/.exec(text);
+  const shortDate = /^(\d{1,2})[/.-](\d{1,2})(?=[_ -])/.exec(dateText);
+  if (fullDate && shortDate && Number(fullDate[2]) === Number(shortDate[1]) && Number(fullDate[3]) === Number(shortDate[2])) {
+    dateText = `${fullDate[1]}/${dateText}`;
+  }
+  return {
+    financialText: `${block[1] === '+' ? 'واریز' : 'برداشت'}:${block[2]} ${block[3] ?? ''}\nمانده:${block[5]} ${block[6] ?? block[3] ?? ''}`,
+    dateText,
+  };
+}
 
 interface AmountMatch {
   value: number;
@@ -100,9 +132,11 @@ interface AmountMatch {
   labelled: boolean;
   /** جداکننده‌ی هزارگان دارد؛ شماره‌ها معمولاً ندارند. */
   grouped: boolean;
+  /** Explicit direction attached to this amount, stronger than words in the description. */
+  direction?: TransactionType;
 }
 
-const AMOUNT_RE = /(\d[\d,]{2,})\s*(ریال|تومان)?/g;
+const AMOUNT_RE = /(\d[\d,]*)\s*(ریال|تومان)?/g;
 
 /**
  * سالِ یک تاریخ («1405/06/20»، «1405.06.20») مبلغ نیست.
@@ -132,10 +166,12 @@ function extractAmounts(text: string): AmountMatch[] {
   const results: AmountMatch[] = [];
   AMOUNT_RE.lastIndex = 0;
   let match: RegExpExecArray | null;
+  const accountSpans = Array.from(text.matchAll(/(?:حساب|سپرده|واریز\s*به|برداشت\s*از)\s*:?\s*\d+(?:\.\d+){2,}/g));
 
   while ((match = AMOUNT_RE.exec(text)) !== null) {
     const digits = match[1].replace(/,/g, '');
-    if (digits.length < 4) continue;
+    if (accountSpans.some(account => match!.index >= account.index! && match!.index < account.index! + account[0].length)) continue;
+    if (!Number.isSafeInteger(Number(digits))) continue;
     if (DATE_TAIL_RE.test(text.slice(match.index + match[1].length))) continue;
 
     // به‌جای lookbehind: ۲۵ کاراکترِ قبل از عدد را نگاه می‌کنیم و
@@ -145,6 +181,7 @@ function extractAmounts(text: string): AmountMatch[] {
     const label = before.replace(/[\s:.\-–—*]+$/, '');
     const grouped = match[1].includes(',');
     const hasUnit = Boolean(match[2]);
+    if (digits.length < 4 && !hasUnit && !SPEND_LABEL.test(label) && !BALANCE_LABEL.test(label)) continue;
 
     // ترتیب مهم است: «مانده حساب» هم به «حساب» ختم می‌شود، پس اول مانده.
     if (BALANCE_LABEL.test(label)) {
@@ -169,6 +206,8 @@ function extractAmounts(text: string): AmountMatch[] {
       isBalance: false,
       labelled: SPEND_LABEL.test(label),
       grouped,
+      direction: /(?:برداشت|بدهکار|کاهش)$/.test(label) ? 'debit'
+        : /(?:واریز|بستانکار|افزایش)$/.test(label) ? 'credit' : undefined,
     });
   }
 
@@ -189,7 +228,6 @@ function pickSpendAmount(amounts: AmountMatch[]): AmountMatch | null {
     spendable.find(a => a.labelled) ??
     spendable.find(a => a.grouped) ??
     spendable[0] ??
-    amounts[0] ??
     null
   );
 }
@@ -210,7 +248,12 @@ function pickBalance(amounts: AmountMatch[]): number | null {
  * عمداً ذخیره نمی‌کنیم.
  */
 function extractAccountLast4(text: string): string | null {
-  const match = /(?:حساب|سپرده)\s*:?\s*(\d{6,})/.exec(text);
+  // Pasargad's segmented account follows «واریز به» rather than «حساب».
+  // Require that label so dotted dates/terminal identifiers are not accounts.
+  const segmented = /(?:حساب|سپرده|واریز\s*به|برداشت\s*از)\s*:?\s*(\d+(?:\.\d+){2,})(?![\d.])/.exec(text);
+  const digits = segmented?.[1].replace(/\./g, '');
+  if (digits && digits.length >= 6) return digits.slice(-4);
+  const match = /(?:حساب|سپرده)\s*:?\s*(\d{6,})(?![\d.])/.exec(text);
   return match ? match[1].slice(-4) : null;
 }
 
@@ -250,13 +293,28 @@ function extractDate(text: string, now = new Date()): string | null {
   const hour = time ? Number(time[1]) : 0;
   const minute = time ? Number(time[2]) : 0;
 
-  const validDay = (month: number, day: number) =>
-    month >= 1 && month <= 12 && day >= 1 && day <= (month <= 6 ? 31 : 30);
+  const validDay = (month: number, day: number, year = toJalali(now).jy) =>
+    month >= 1 && month <= 12 && day >= 1 && day <= jalaliMonthLength(year, month);
 
   // جداکننده می‌تواند «/»، «.» یا «-» باشد: بلوبانک می‌نویسد ۱۴۰۵.۰۶.۲۰.
   const full = /(1[34]\d{2})[/.-](\d{1,2})[/.-](\d{1,2})/.exec(text);
-  if (full && validDay(Number(full[2]), Number(full[3]))) {
+  if (full) {
+    if (!validDay(Number(full[2]), Number(full[3]), Number(full[1]))) return null;
     const date = toGregorian(Number(full[1]), Number(full[2]), Number(full[3]));
+    date.setHours(hour, minute, 0, 0);
+    return date.toISOString();
+  }
+
+  // YY/MM/DD followed by a clock, on its own line. Do not interpret part of
+  // an account number as a short year. Resolve the century around receipt time.
+  const shortYear = /(?:^|\n)\s*(\d{2})\/(\d{1,2})\/(\d{1,2})(?=[_ -]\d{1,2}:\d{2})/.exec(text);
+  if (shortYear) {
+    const { jy } = toJalali(now);
+    let year = Math.floor(jy / 100) * 100 + Number(shortYear[1]);
+    if (year > jy + 50) year -= 100;
+    if (year < jy - 50) year += 100;
+    if (!validDay(Number(shortYear[2]), Number(shortYear[3]), year)) return null;
+    const date = toGregorian(year, Number(shortYear[2]), Number(shortYear[3]));
     date.setHours(hour, minute, 0, 0);
     return date.toISOString();
   }
@@ -292,28 +350,35 @@ function extractDate(text: string, now = new Date()): string | null {
 
 export function parseSms(raw: string, receivedAt = new Date()): ParsedSms {
   const text = normalize(raw);
+  const settlement = settledTransaction(text);
+  const authOnly = (AUTH_CODE_RE.test(text) || AUTH_WORD_RE.test(text)) && !settlement;
+  const notCompleted = authOnly || (FAILED_TRANSACTION_RE.test(text) && !settlement);
 
-  const amounts = extractAmounts(text);
+  const amounts = notCompleted ? [] : extractAmounts(settlement?.financialText ?? text);
   const spend = pickSpendAmount(amounts);
   // ریالِ فرد تومانِ اعشاری می‌دهد؛ مبلغ همیشه عدد صحیح ذخیره می‌شود.
   const amount = spend ? Math.round(spend.currency === 'rial' ? spend.value / 10 : spend.value) : null;
 
   // نام بانک از متن برداشته می‌شود چون بعضی بانک‌ها هم‌نام فروشگاه‌های
   // زنجیره‌ای‌اند: «بانک رفاه» نباید فروشگاه رفاه خوانده شود.
-  const { merchant, category } = extractMerchant(text.replace(BANK_MENTION_RE, ' '));
+  const { merchant, category } = notCompleted ? { merchant: null, category: 'other' }
+    : extractMerchant(text.replace(BANK_MENTION_RE, ' '));
 
   const bank = findBankName(text);
   const cardMatch = /\*{2,}\s*(\d{4})/.exec(text);
   const balance = pickBalance(amounts);
   const accountLast4 = extractAccountLast4(text);
-  const type: TransactionType = CREDIT_KEYWORDS.some(k => text.includes(k)) ? 'credit' : 'debit';
+  // «دریافت اتوماتیک قسط» در شرح، دریافت پول برای مشتری نیست؛ برچسب مبلغ مقدم است.
+  const heading = /(?:^|\n)\s*(برداشت|بدهکار|کاهش|واریز|بستانکار|افزایش)\s*(?=\n|$)/.exec(text);
+  const headingType = heading ? (/برداشت|بدهکار|کاهش/.test(heading[1]) ? 'debit' : 'credit') : undefined;
+  const type: TransactionType = spend?.direction ?? headingType ?? (CREDIT_KEYWORDS.some(k => text.includes(k)) ? 'credit' : 'debit');
 
   // دسته باید هم‌نوعِ تراکنش باشد. واریزی که هیچ قاعده‌ای نگرفته، قبلاً «متفرقه»
   // (دسته‌ی خرج) می‌گرفت و در فرم درآمد هیچ چیپی انتخاب نبود.
   const categoryKind = BUILT_IN_CATEGORIES.find(c => c.id === category)?.kind;
   const categoryId = categoryKind === type ? category : fallbackIdFor(type);
 
-  const date = extractDate(text, receivedAt) ?? receivedAt.toISOString();
+  const date = extractDate(settlement?.dateText ?? text, receivedAt) ?? receivedAt.toISOString();
 
   let confidence = 0;
   if (amount) confidence += 0.5;

@@ -211,6 +211,7 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
     <ScreenContainer flush>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <FormScreenHeader
+          onBack={() => navigation.goBack()}
           title="این درست است؟"
           subtitle="هر چیزی را که لازم است اصلاح کن، بعد با یک لمس تایید کن."
         />
@@ -276,7 +277,6 @@ export function ConfirmTransactionScreen({ route, navigation }: Props) {
         loading={saving}
         disabled={!form.canSave}
         error={saveError}
-        onCancel={() => navigation.goBack()}
       />
     </ScreenContainer>
   );
